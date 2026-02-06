@@ -1,0 +1,23 @@
+# BIRS
+.venv/
+venv/
+env/
+.env
+data/chroma_birs/
+results/*.json
+results/*.md
+!results/.gitkeep
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.coverage
+htmlcov/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
