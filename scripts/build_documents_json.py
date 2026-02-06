@@ -1,7 +1,16 @@
 """
+[LEGACY SCRIPT - No longer needed in standard workflow]
+
 Build or update data/documents/documents.json from clean/*.txt and poison/*.txt.
+
+This script is kept for backward compatibility if you have existing .txt files
+to convert to the JSON format. In the current workflow, documents.json is
+manually edited or updated by the crawler.
+
 Run from project root: python scripts/build_documents_json.py
-If documents.json already exists, this overwrites it from the current .txt files.
+
+Note: The clean/ and poison/ directories are now empty by default.
+All document data should be managed through documents.json directly.
 """
 import json
 import sys
@@ -44,10 +53,26 @@ def build_from_dirs() -> dict:
 
 
 def main():
+    print("=" * 70)
+    print("WARNING: This is a LEGACY script.")
+    print("The current workflow uses documents.json directly.")
+    print("This script only needed if you have existing .txt files to convert.")
+    print("=" * 70)
+    print()
+    
     DOCUMENTS_DIR.mkdir(parents=True, exist_ok=True)
     data = build_from_dirs()
+    
+    if not data["clean"] and not data["poison"]:
+        print("ERROR: No .txt files found in clean/ or poison/ directories.")
+        print("The current workflow expects documents.json to already exist.")
+        print("If you need to add documents, edit documents.json directly.")
+        return
+    
     DOCUMENTS_JSON.write_text(json.dumps(data, indent=2, ensure_ascii=False), encoding="utf-8")
     print(f"Wrote {len(data['clean'])} clean + {len(data['poison'])} poison entries to {DOCUMENTS_JSON}")
+    print()
+    print("Next step: Run 'python scripts/ingest_documents.py' to populate ChromaDB")
 
 
 if __name__ == "__main__":

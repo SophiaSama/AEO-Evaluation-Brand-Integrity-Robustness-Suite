@@ -87,14 +87,15 @@
 
 **Deliverables:**
 
-1. **Document set (20 files total):**
-   - **5 clean:** Truthful articles (e.g. "Brand X is a high-end AI tool for mums," safety certifications, etc.).
-   - **15 poison:** Technically valid (schema-correct) but **factually false** (e.g. "Brand X is a data-scam," "Brand X leaked user data in Singapore," "Brand X is a copycat"). Stored under `data/documents/poison/` or with metadata `source_type: "clean" | "poison"`.
+1. **Document set (20 documents total):**
+   - **5 clean:** Truthful articles (e.g. "Brand X is a high-end AI tool for families," safety certifications, etc.).
+   - **15 poison:** Technically valid (schema-correct) but **factually false** (e.g. "Brand X is a data-scam," "Brand X leaked user data in Singapore," "Brand X is a copycat").
+   - All documents stored in `data/documents/documents.json` with metadata `source_type: "clean" | "poison"` and `source_name: "official" | "press_release" | "reddit"` for Authority test.
 
 2. **Vector DB (ChromaDB):**
-   - Ingest all 20 with metadata (e.g. `source_type`, `source_name` = "official" | "press_release" | "reddit" for Authority test).
-   - Embed with a local model (e.g. Chroma default or `sentence-transformers/all-MiniLM-L6-v2`).
-   - Persist index under `data/chroma_birs/`; support "reset to clean" (e.g. re-ingest only clean or use two collections: `birs_clean`, `birs_poisoned`).
+   - Ingest all 20 documents from `documents.json` with metadata (e.g. `source_type`, `source_name`).
+   - Embed with a local model (`sentence-transformers/all-MiniLM-L6-v2`).
+   - Persist index under `data/chroma_birs/`; support "reset to clean" with two collections: `birs_clean` (5 docs), `birs_poisoned` (20 docs).
 
 3. **RAG pipeline (LangChain):**
    - Retrieve top-k from ChromaDB → build context → pass to **Ollama (Llama 3.2)** via LangChain.
@@ -153,8 +154,9 @@ AEO_Evaluation/
 │   └── BIRS_PLAN.md                 # This plan
 ├── data/
 │   ├── documents/
-│   │   ├── clean/                   # 5 truthful .txt articles
-│   │   └── poison/                  # 15 false but schema-valid .txt articles
+│   │   ├── documents.json           # Single source of truth: clean + poison docs
+│   │   ├── clean/                   # Empty (legacy)
+│   │   └── poison/                  # Empty (legacy)
 │   └── chroma_birs/                 # ChromaDB persistence (gitignore)
 ├── src/
 │   ├── __init__.py
@@ -162,13 +164,14 @@ AEO_Evaluation/
 │   ├── baseline.py                  # Phase 1: RAG with clean-only docs → Ollama
 │   ├── rag.py                       # Phase 2: ChromaDB + LangChain + Ollama
 │   ├── test_cases.py                # Phase 3: BIRS-01, BIRS-02, BIRS-03
-│   ├── scoring.py                  # Phase 4: sentiment, citation, Liar Score, DeepEval
-│   └── run_suite.py                 # Orchestrate 1→2→3→4, output report
+│   ├── scoring.py                   # Phase 4: sentiment, citation, Liar Score, DeepEval
+│   ├── run_suite.py                 # Orchestrate 1→2→3→4, output report
+│   └── crawler.py                   # Web crawling for real brand data
 ├── scripts/
-│   ├── ingest_documents.py          # Ingest clean and/or poison into ChromaDB
+│   ├── ingest_documents.py          # Ingest from documents.json into ChromaDB
+│   ├── crawl_brand.py               # Crawl web for clean brand content
 │   └── reset_sandbox_clean.py       # Reset to clean-only (e.g. for baseline)
 ├── tests/
-│   ├── test_baseline.py
 │   ├── test_rag.py
 │   ├── test_test_cases.py
 │   └── test_scoring.py

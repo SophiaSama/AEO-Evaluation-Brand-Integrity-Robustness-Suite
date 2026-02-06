@@ -6,10 +6,10 @@ from pathlib import Path
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 DATA_DIR = Path(os.getenv("BIRS_DATA_DIR", str(PROJECT_ROOT / "data")))
 DOCUMENTS_DIR = DATA_DIR / "documents"
-# Single JSON file for all document data (clean + poison). Preferred over clean/*.txt and poison/*.txt.
+# Single JSON file for all document data (clean + poison). This is the source of truth.
 DOCUMENTS_JSON = DOCUMENTS_DIR / "documents.json"
-CLEAN_DIR = DOCUMENTS_DIR / "clean"  # Legacy; used by build_documents_json.py to populate JSON
-POISON_DIR = DOCUMENTS_DIR / "poison"  # Legacy; used by build_documents_json.py to populate JSON
+CLEAN_DIR = DOCUMENTS_DIR / "clean"  # Empty (legacy); kept for backward compatibility
+POISON_DIR = DOCUMENTS_DIR / "poison"  # Empty (legacy); kept for backward compatibility
 CHROMA_DIR = Path(os.getenv("BIRS_CHROMA_DIR", str(DATA_DIR / "chroma_birs")))
 RESULTS_DIR = PROJECT_ROOT / "results"
 

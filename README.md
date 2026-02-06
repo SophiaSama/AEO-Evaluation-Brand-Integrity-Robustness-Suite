@@ -1,4 +1,30 @@
-# Brand Integrity Robustness Suite (BIRS)
+# Brand Integrity Robustness Suite (BIRS## 1. (Optional) Crawl real-life data for the brand
+
+To use **real web content** about **Manus** (or another brand) as the "clean" documents:
+
+```bash
+python scripts/crawl_brand.py --brand Manus --max-docs 5
+```
+
+This fetches pages from Manus's website and search results, extracts main text, and updates `data/documents/documents.json` with new clean content. If you skip this step, the suite uses the bundled synthetic clean docs about Manus.
+
+**Customize URLs:** You can specify exact URLs or use a configuration file. See [`docs/CRAWLING_GUIDE.md`](docs/CRAWLING_GUIDE.md) for all options:
+
+```bash
+# Use specific URLs
+python scripts/crawl_brand.py --brand MyBrand --urls "https://example.com" "https://example.com/about"
+
+# Use configuration file
+python scripts/crawl_brand.py --brand MyBrand --seed-urls-file data/seed_urls.json
+```# 2. Ingest documents into ChromaDB
+
+Reads from `data/documents/documents.json` and creates two ChromaDB collections: `birs_clean` (5 truthful docs) and `birs_poisoned` (5 clean + 15 poison docs).
+
+```bash
+python scripts/ingest_documents.py
+```
+
+First run will download the embedding model (~80MB). ChromaDB is stored under `data/chroma_birs/`.from Manus's website and search results, extracts main text, and updates `data/documents/documents.json` with new clean content. If you skip this step, the suite uses the bundled synthetic clean docs about Manus.
 
 A **sandboxed** test suite that checks how an AI answer engine reacts when it sees "poisoned" data about a brand—**without ever sending that data to a public LLM**. The default brand is **Manus** (the AI agent product); you can use **real-life crawled data** for clean docs or synthetic data.
 
@@ -119,26 +145,26 @@ Unit tests do not require Ollama or ChromaDB to be populated. Integration/E2E re
 
 ## Document data (JSON)
 
-Documents are organised in a single JSON file:
+Documents are organized in a single JSON file:
 
 - **`data/documents/documents.json`** — `{ "clean": [ { "id", "source", "source_name", "content" }, ... ], "poison": [ ... ] }`
-  - **clean**: truthful docs (official/synthetic or crawled); **poison**: false claims for attack simulation.
-  - Ingest reads from this file. If `documents.json` is missing, ingest falls back to `clean/*.txt` and `poison/*.txt`.
+  - **clean**: truthful docs (official/synthetic or crawled from real websites)
+  - **poison**: false claims for attack simulation
+  - The ingest script reads from this file to populate ChromaDB collections
 
-To build the JSON from existing `.txt` files (e.g. after adding new poison docs):  
-`python scripts/build_documents_json.py`
+**Legacy `.txt` files:** The `clean/` and `poison/` directories are no longer used. All documents are now managed through `documents.json` for easier maintenance and version control.
 
 ## Project layout
 
 ```
 AEO_Evaluation/
 ├── data/documents/
-│   ├── documents.json     # Clean + poison docs (preferred)
-│   ├── clean/             # Legacy .txt (used by build_documents_json.py)
-│   └── poison/            # Legacy .txt (used by build_documents_json.py)
+│   ├── documents.json     # Clean + poison docs (single source of truth)
+│   ├── clean/             # Empty (legacy)
+│   └── poison/            # Empty (legacy)
 ├── data/chroma_birs/      # ChromaDB (after ingest)
 ├── src/                   # baseline, rag, test_cases, scoring, run_suite, crawler
-├── scripts/               # ingest_documents, crawl_brand, build_documents_json, reset_sandbox_clean
+├── scripts/               # ingest_documents, crawl_brand, reset_sandbox_clean
 ├── tests/
 ├── results/               # birs_results.json, birs_report.md
 └── docs/BIRS_PLAN.md
