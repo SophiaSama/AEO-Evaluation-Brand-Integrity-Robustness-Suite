@@ -29,12 +29,18 @@ def _get_sentiment(text: str) -> float:
         _sentiment_analyzer = SentimentIntensityAnalyzer()
     return _sentiment_analyzer.polarity_scores(text)["compound"]
 
-# Default seed URLs for Manus (official + docs)
-MANUS_SEED_URLS = [
-    "https://manus.im/",
-    "https://manus.im/docs/introduction/welcome",
-    "https://manus.ai/",
-]
+# Default seed URLs for known brands (can be overridden via config file or command-line)
+BRAND_SEED_URLS = {
+    "manus": [
+        "https://manus.im/",
+        "https://manus.im/docs/introduction/welcome",
+        "https://manus.ai/",
+    ],
+    # Add more brands here or use data/seed_urls.json via --seed-urls-file
+}
+
+# Legacy constant for backward compatibility
+MANUS_SEED_URLS = BRAND_SEED_URLS["manus"]
 
 USER_AGENT = "BIRS-Crawler/1.0 (Brand Integrity Robustness Suite; research)"
 REQUEST_TIMEOUT = 15
@@ -121,8 +127,10 @@ def crawl_brand(
         output_dir = None
 
     if urls is None:
-        if brand.lower() == "manus":
-            urls = list(MANUS_SEED_URLS)
+        # Check if brand has predefined seed URLs
+        brand_key = brand.lower()
+        if brand_key in BRAND_SEED_URLS:
+            urls = list(BRAND_SEED_URLS[brand_key])
         else:
             urls = []
         if use_search and len(urls) < max_docs:
