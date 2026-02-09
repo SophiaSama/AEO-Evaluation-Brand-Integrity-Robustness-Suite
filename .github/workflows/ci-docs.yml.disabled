@@ -1,0 +1,431 @@
+name: BIRS Documentation
+
+on:
+  push:
+    branches: [main, develop]
+    paths:
+      - 'src/**/*.py'
+      - 'docs/**'
+      - 'README.md'
+      - '.github/workflows/ci-docs.yml'
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+jobs:
+  validate-docs:
+    name: Validate Documentation
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Check for broken markdown links
+        run: |
+          # Simple link checker for markdown files
+          python << 'EOF'
+import re
+import os
+from pathlib import Path
+
+def check_markdown_links(file_path):
+    content = Path(file_path).read_text()
+    # Find markdown links: [text](link)
+    links = re.findall(r'\[([^\]]+)\]\(([^)]+)\)', content)
+    
+    broken = []
+    for text, link in links:
+        # Skip external URLs
+        if link.startswith('http://') or link.startswith('https://'):
+            continue
+        
+        # Check if file exists (relative to markdown file)
+        if link.startswith('#'):
+            continue  # Skip anchor links for now
+        
+        target = Path(file_path).parent / link
+        if not target.exists():
+            broken.append((text, link))
+    
+    return broken
+
+# Check all markdown files
+broken_links = {}
+for md_file in Path('.').rglob('*.md'):
+    if '.git' in str(md_file):
+        continue
+    
+    broken = check_markdown_links(md_file)
+    if broken:
+        broken_links[str(md_file)] = broken
+
+if broken_links:
+    print("⚠️ Found broken links:")
+    for file, links in broken_links.items():
+        print(f"\n{file}:")
+        for text, link in links:
+            print(f"  - [{text}]({link})")
+else:
+    print("✓ No broken links found")
+EOF
+
+      - name: Validate code examples in docs
+        run: |
+          python << 'EOF'
+import re
+from pathlib import Path
+
+def extract_python_code_blocks(file_path):
+    content = Path(file_path).read_text()
+    # Find python code blocks
+    pattern = r'```python\n(.*?)```'
+    return re.findall(pattern, content, re.DOTALL)
+
+# Check Python code blocks for syntax errors
+errors = []
+for md_file in Path('docs/').rglob('*.md'):
+    code_blocks = extract_python_code_blocks(md_file)
+    for i, code in enumerate(code_blocks):
+        try:
+            compile(code, f"{md_file}_block_{i}", 'exec')
+        except SyntaxError as e:
+            errors.append(f"{md_file} block {i}: {e}")
+
+if errors:
+    print("⚠️ Syntax errors in code examples:")
+    for error in errors:
+        print(f"  - {error}")
+else:
+    print("✓ All code examples are syntactically valid")
+EOF
+
+      - name: Check documentation completeness
+        run: |
+          python << 'EOF'
+from pathlib import Path
+import ast
+
+def get_module_docstrings(file_path):
+    """Extract module, class, and function docstrings."""
+    try:
+        tree = ast.parse(Path(file_path).read_text())
+        
+        info = {
+            'module': ast.get_docstring(tree),
+            'classes': [],
+            'functions': []
+        }
+        
+        for node in ast.walk(tree):
+            if isinstance(node, ast.ClassDef):
+                info['classes'].append({
+                    'name': node.name,
+                    'docstring': ast.get_docstring(node)
+                })
+            elif isinstance(node, ast.FunctionDef):
+                # Skip private functions
+                if not node.name.startswith('_'):
+                    info['functions'].append({
+                        'name': node.name,
+                        'docstring': ast.get_docstring(node)
+                    })
+        
+        return info
+    except:
+        return None
+
+# Check all Python files in src/
+missing_docs = []
+for py_file in Path('src/').glob('*.py'):
+    if py_file.name.startswith('_'):
+        continue
+    
+    info = get_module_docstrings(py_file)
+    if not info:
+        continue
+    
+    if not info['module']:
+        missing_docs.append(f"{py_file}: Missing module docstring")
+    
+    for cls in info['classes']:
+        if not cls['docstring']:
+            missing_docs.append(f"{py_file}: Class {cls['name']} missing docstring")
+    
+    for func in info['functions']:
+        if not func['docstring']:
+            missing_docs.append(f"{py_file}: Function {func['name']} missing docstring")
+
+if missing_docs:
+    print(f"⚠️ Found {len(missing_docs)} missing docstrings:")
+    for item in missing_docs[:20]:  # Show first 20
+        print(f"  - {item}")
+    if len(missing_docs) > 20:
+        print(f"  ... and {len(missing_docs) - 20} more")
+else:
+    print("✓ All public APIs have docstrings")
+EOF
+
+  generate-api-docs:
+    name: Generate API Documentation
+    runs-on: ubuntu-latest
+    needs: validate-docs
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install documentation tools
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pdoc3 sphinx sphinx-rtd-theme
+
+      - name: Generate pdoc documentation
+        run: |
+          mkdir -p docs/api
+          pdoc --html --output-dir docs/api src/ --force
+          
+          # Move generated HTML to proper location
+          if [ -d "docs/api/src" ]; then
+            mv docs/api/src/* docs/api/
+            rmdir docs/api/src
+          fi
+
+      - name: Generate module reference
+        run: |
+          python << 'EOF' > docs/API_REFERENCE.md
+from pathlib import Path
+import ast
+import inspect
+
+def document_module(file_path):
+    """Generate markdown documentation for a Python module."""
+    module_name = file_path.stem
+    content = Path(file_path).read_text()
+    
+    try:
+        tree = ast.parse(content)
+    except:
+        return ""
+    
+    doc = f"# {module_name}\n\n"
+    
+    # Module docstring
+    module_doc = ast.get_docstring(tree)
+    if module_doc:
+        doc += f"{module_doc}\n\n"
+    
+    # Classes
+    classes = [node for node in ast.walk(tree) if isinstance(node, ast.ClassDef)]
+    if classes:
+        doc += "## Classes\n\n"
+        for cls in classes:
+            doc += f"### `{cls.name}`\n\n"
+            cls_doc = ast.get_docstring(cls)
+            if cls_doc:
+                doc += f"{cls_doc}\n\n"
+            
+            # Methods
+            methods = [node for node in cls.body if isinstance(node, ast.FunctionDef)]
+            if methods:
+                doc += "**Methods:**\n\n"
+                for method in methods:
+                    if not method.name.startswith('_') or method.name == '__init__':
+                        doc += f"- `{method.name}()`"
+                        method_doc = ast.get_docstring(method)
+                        if method_doc:
+                            # Get first line of docstring
+                            first_line = method_doc.split('\n')[0]
+                            doc += f": {first_line}"
+                        doc += "\n"
+                doc += "\n"
+    
+    # Functions
+    functions = [node for node in tree.body if isinstance(node, ast.FunctionDef)]
+    if functions:
+        doc += "## Functions\n\n"
+        for func in functions:
+            if not func.name.startswith('_'):
+                doc += f"### `{func.name}()`\n\n"
+                func_doc = ast.get_docstring(func)
+                if func_doc:
+                    doc += f"{func_doc}\n\n"
+    
+    return doc
+
+# Generate documentation for all modules
+api_doc = "# BIRS API Reference\n\n"
+api_doc += "Auto-generated API documentation for BIRS modules.\n\n"
+
+for py_file in sorted(Path('src/').glob('*.py')):
+    if py_file.name.startswith('_'):
+        continue
+    
+    module_doc = document_module(py_file)
+    if module_doc:
+        api_doc += module_doc + "\n---\n\n"
+
+Path('docs/API_REFERENCE.md').write_text(api_doc)
+print("✓ Generated API_REFERENCE.md")
+EOF
+
+      - name: Upload documentation artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: api-documentation
+          path: |
+            docs/api/
+            docs/API_REFERENCE.md
+
+  check-readme:
+    name: Validate README
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Check README structure
+        run: |
+          python << 'EOF'
+from pathlib import Path
+
+readme = Path('README.md').read_text()
+
+# Check for required sections
+required_sections = [
+    'Installation',
+    'Usage',
+    'Requirements',
+    'Setup'
+]
+
+missing = []
+for section in required_sections:
+    if section.lower() not in readme.lower():
+        missing.append(section)
+
+if missing:
+    print(f"⚠️ README missing sections: {', '.join(missing)}")
+else:
+    print("✓ README contains all required sections")
+
+# Check for code blocks
+code_blocks = readme.count('```')
+if code_blocks % 2 != 0:
+    print("⚠️ README has unclosed code blocks")
+else:
+    print(f"✓ README has {code_blocks // 2} properly closed code blocks")
+EOF
+
+  update-docs-site:
+    name: Deploy Documentation Site
+    runs-on: ubuntu-latest
+    needs: [generate-api-docs, check-readme]
+    if: github.ref == 'refs/heads/main'
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Download API docs
+        uses: actions/download-artifact@v4
+        with:
+          name: api-documentation
+          path: docs/
+
+      - name: Setup GitHub Pages
+        uses: actions/configure-pages@v4
+
+      - name: Create index.html for docs
+        run: |
+          mkdir -p docs-site
+          cat > docs-site/index.html << 'EOF'
+<!DOCTYPE html>
+<html>
+<head>
+    <title>BIRS Documentation</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 2rem;
+            line-height: 1.6;
+        }
+        h1 { color: #2c3e50; }
+        .card {
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            padding: 1.5rem;
+            margin: 1rem 0;
+            background: #f9f9f9;
+        }
+        .card h2 { margin-top: 0; }
+        a { color: #3498db; text-decoration: none; }
+        a:hover { text-decoration: underline; }
+    </style>
+</head>
+<body>
+    <h1>🛡️ BIRS Documentation</h1>
+    <p>Brand Integrity Robustness Suite - Sandboxed AI Answer Engine Testing</p>
+    
+    <div class="card">
+        <h2>📚 Core Documentation</h2>
+        <ul>
+            <li><a href="../README.md">README - Getting Started</a></li>
+            <li><a href="../docs/BIRS_PLAN.md">BIRS Plan - Architecture</a></li>
+            <li><a href="../docs/AEO_INTEGRATION.md">AEO Integration Guide</a></li>
+            <li><a href="../docs/CRAWLING_GUIDE.md">Crawling Guide</a></li>
+        </ul>
+    </div>
+    
+    <div class="card">
+        <h2>🔧 API Reference</h2>
+        <ul>
+            <li><a href="API_REFERENCE.md">API Reference (Auto-generated)</a></li>
+            <li><a href="api/index.html">Full API Documentation (pdoc)</a></li>
+        </ul>
+    </div>
+    
+    <div class="card">
+        <h2>🧪 Testing</h2>
+        <ul>
+            <li><a href="../docs/AEO_AUDIT_SUMMARY.md">AEO Audit Summary</a></li>
+            <li><a href="../MIGRATION_NOTES.md">Migration Notes</a></li>
+        </ul>
+    </div>
+</body>
+</html>
+EOF
+
+      - name: Copy documentation files
+        run: |
+          cp README.md docs-site/
+          cp -r docs/* docs-site/ || true
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: docs-site/
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

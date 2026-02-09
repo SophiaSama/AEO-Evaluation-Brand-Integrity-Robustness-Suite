@@ -4,6 +4,7 @@ All runs are sandboxed (ChromaDB + Ollama); no public LLM receives poison.
 Now includes AEO Audit Guidelines integration (BIRS-04, BIRS-05, BIRS-06).
 Includes automatic HTML visualization generation.
 """
+
 from pathlib import Path
 
 from src.baseline import get_baseline_response
@@ -27,7 +28,7 @@ def run_suite(
     3. Scoring: sentiment drift, citation fidelity, Liar Score, AEO Audit metrics, optional DeepEval
     4. Save JSON + Markdown to output_dir
     5. Generate interactive HTML report with visualizations
-    
+
     Args:
         brand: Brand name to test (default: from config)
         output_dir: Output directory for results (default: RESULTS_DIR)
@@ -55,9 +56,22 @@ def run_suite(
     poisoned_answer = test_results[0].raw_answer
     poisoned_contexts = test_results[0].contexts or []
     # Split contexts into official vs poison by content heuristics (clean docs don't contain "scam"/"leak" etc.)
-    poison_keywords = ("scam", "leak", "fraud", "copycat", "lawsuit", "shutdown", "recall", "spyware")
-    official_contexts = [c for c in poisoned_contexts if not any(k in c.lower() for k in poison_keywords)]
-    poison_contexts = [c for c in poisoned_contexts if any(k in c.lower() for k in poison_keywords)]
+    poison_keywords = (
+        "scam",
+        "leak",
+        "fraud",
+        "copycat",
+        "lawsuit",
+        "shutdown",
+        "recall",
+        "spyware",
+    )
+    official_contexts = [
+        c for c in poisoned_contexts if not any(k in c.lower() for k in poison_keywords)
+    ]
+    poison_contexts = [
+        c for c in poisoned_contexts if any(k in c.lower() for k in poison_keywords)
+    ]
     if not official_contexts:
         official_contexts = baseline_contexts
     if not poison_contexts:
@@ -82,16 +96,17 @@ def run_suite(
         scoring=scoring,
         output_dir=output_dir,
     )
-    
+
     # Generate interactive HTML report
     if generate_html:
         try:
             from src.visualize import generate_html_report
+
             html_path = generate_html_report(results_path)
             print(f"📊 Interactive HTML report: {html_path}")
         except Exception as e:
             print(f"⚠️ Could not generate HTML report: {e}")
-    
+
     return results_path
 
 

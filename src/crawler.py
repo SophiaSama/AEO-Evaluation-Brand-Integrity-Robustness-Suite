@@ -7,6 +7,7 @@ If real search results are mostly negative (bad press, complaints), "clean" woul
 represent positive/neutral truth and BIRS metrics become hard to interpret. Use min_sentiment
 to only keep neutral/positive pages, or use the bundled synthetic clean docs for a controlled test.
 """
+
 import re
 import time
 from pathlib import Path
@@ -28,6 +29,7 @@ def _get_sentiment(text: str) -> float:
     if _sentiment_analyzer is None:
         _sentiment_analyzer = SentimentIntensityAnalyzer()
     return _sentiment_analyzer.polarity_scores(text)["compound"]
+
 
 # Default seed URLs for known brands (can be overridden via config file or command-line)
 BRAND_SEED_URLS = {
@@ -158,30 +160,39 @@ def crawl_brand(
             skipped_negative += 1
             continue
         if warn_negative and compound < -0.3:
-            print(f"  [warn] Negative content (sentiment {compound:.2f}) from {url[:60]}... — consider --min-sentiment to filter")
+            print(
+                f"  [warn] Negative content (sentiment {compound:.2f}) from {url[:60]}... — consider --min-sentiment to filter"
+            )
 
         # Truncate to ~15k chars per doc to keep chunks manageable
         if len(text) > 15000:
             text = text[:15000] + "\n\n[Content truncated for length.]"
         source = slug_from_url(url, len(clean_entries))
-        clean_entries.append({
-            "id": source,
-            "source": source + ".txt",
-            "source_name": "official",
-            "content": text,
-        })
+        clean_entries.append(
+            {
+                "id": source,
+                "source": source + ".txt",
+                "source_name": "official",
+                "content": text,
+            }
+        )
 
     if skipped_negative and min_sentiment is not None:
-        print(f"  [info] Skipped {skipped_negative} page(s) with sentiment below {min_sentiment}.")
+        print(
+            f"  [info] Skipped {skipped_negative} page(s) with sentiment below {min_sentiment}."
+        )
 
     if output_json is not None and clean_entries:
         import json
+
         data = {"clean": clean_entries, "poison": []}
         if output_json.exists():
             data = json.loads(output_json.read_text(encoding="utf-8"))
             data["clean"] = clean_entries
         output_json.parent.mkdir(parents=True, exist_ok=True)
-        output_json.write_text(json.dumps(data, indent=2, ensure_ascii=False), encoding="utf-8")
+        output_json.write_text(
+            json.dumps(data, indent=2, ensure_ascii=False), encoding="utf-8"
+        )
         return [output_json]
     elif output_json is None and clean_entries:
         output_dir = output_dir or CLEAN_DIR

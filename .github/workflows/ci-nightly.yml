@@ -27,6 +27,9 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 60
     
+    env:
+      PYTHONPATH: ${{ github.workspace }}
+    
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -75,7 +78,7 @@ jobs:
 
       - name: Run full BIRS suite with extended tests
         run: |
-          python << 'EOF' > extended_results.json
+          python << 'PYTHON_SCRIPT' > extended_results.json
 import json
 from src.run_suite import run_suite
 
@@ -86,37 +89,37 @@ results_path = run_suite(
     run_deepeval=False  # Don't require API key for nightly
 )
 
-print(f"Results saved to: {results_path}")
+print(f'Results saved to: {results_path}')
 
 # Load and summarize results
 with open(results_path) as f:
     data = json.load(f)
 
 summary = {
-    "total_tests": len([k for k in data.keys() if k.startswith("birs_")]),
-    "baseline_answer_length": len(data.get("baseline_answer", "")),
-    "contexts_count": len(data.get("contexts", [])),
-    "extended_tests_completed": True
+    'total_tests': len([k for k in data.keys() if k.startswith('birs_')]),
+    'baseline_answer_length': len(data.get('baseline_answer', '')),
+    'contexts_count': len(data.get('contexts', [])),
+    'extended_tests_completed': True
 }
 
 # Check test results
 test_results = {}
 for key in data.keys():
-    if key.startswith("birs_"):
+    if key.startswith('birs_'):
         test_results[key] = {
-            "pass": data[key].get("pass", False),
-            "score": data[key].get("score", 0)
+            'pass': data[key].get('pass', False),
+            'score': data[key].get('score', 0)
         }
 
-summary["test_results"] = test_results
-summary["passing_tests"] = sum(1 for t in test_results.values() if t["pass"])
-summary["avg_score"] = sum(t["score"] for t in test_results.values()) / len(test_results) if test_results else 0
+summary['test_results'] = test_results
+summary['passing_tests'] = sum(1 for t in test_results.values() if t['pass'])
+summary['avg_score'] = sum(t['score'] for t in test_results.values()) / len(test_results) if test_results else 0
 
-with open("extended_results.json", "w") as f:
+with open('extended_results.json', 'w') as f:
     json.dump(summary, f, indent=2)
 
 print(json.dumps(summary, indent=2))
-EOF
+PYTHON_SCRIPT
         timeout-minutes: 30
 
       - name: Display extended test results

@@ -1,4 +1,5 @@
 """Tests for crawler (unit only; no network)."""
+
 from pathlib import Path
 import tempfile
 
@@ -22,8 +23,11 @@ def test_manus_seed_urls():
 
 def test_crawl_brand_empty_urls_returns_empty_when_no_search():
     from src.crawler import crawl_brand
+
     with tempfile.TemporaryDirectory() as tmp:
         out = Path(tmp)
         # Brand other than Manus, no urls, no search -> urls stay empty or from search
-        saved = crawl_brand("SomeOtherBrand", urls=[], output_dir=out, max_docs=2, use_search=False)
+        saved = crawl_brand(
+            "SomeOtherBrand", urls=[], output_dir=out, max_docs=2, use_search=False
+        )
     assert saved == []

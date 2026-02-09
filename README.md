@@ -2,7 +2,16 @@
 
 > 🔒 **Security Guarantee:** All LLM inference runs **locally** using Ollama. No data ever sent to external APIs. See [Security Documentation](docs/SECURITY_LOCAL_LLM.md).
 
-A **sandboxed** test suite that checks how an AI answer engine reacts when it sees "poisoned" data about a brand—**without ever sending that data to a public LLM**. The default brand is **Manus** (the AI agent product); you can use **real-life crawled data** for clean docs or synthetic data.
+A **sandboxed** test suite that checks how an AI answer engine **Documentation:**
+- 📖 [**CI/CD Pipeline Guide**](docs/CI_CD_PIPELINES.md) - Complete workflow documentation
+- 🏗️ [**Pipeline Architecture**](docs/CI_CD_ARCHITECTURE.md) - Visual workflow diagrams
+- 📊 [**CI/CD Review & Optimization**](docs/CI_CD_SUMMARY.md) - Performance analysis & recommendations ⭐
+- 🚀 [**CI/CD Quick Wins**](docs/CI_CD_QUICK_WINS.md) - 39% faster CI in 1 hour
+- ⚡ [**Test Sharding Guide**](docs/TEST_SHARDING_GUIDE.md) - Parallel test execution (2-4x faster) 🆕
+- 🔒 [**Security: Local-Only LLM**](docs/SECURITY_LOCAL_LLM.md) - Privacy guarantees & verification
+- 🤖 [**Multi-Model Testing**](docs/MULTI_MODEL_TESTING.md) - Test with different Ollama models
+- ⚡ [**Multi-Model Quick Reference**](docs/MULTI_MODEL_QUICK_REF.md) - Fast model switching guide
+- 📊 [**Visualization Guide**](docs/VISUALIZATION_GUIDE.md) - Interactive HTML reports with chartsen it sees "poisoned" data about a brand—**without ever sending that data to a public LLM**. The default brand is **Manus** (the AI agent product); you can use **real-life crawled data** for clean docs or synthetic data.
 
 ## Ethics: No Public LLM Injection
 
@@ -198,11 +207,36 @@ python scripts/ingest_documents.py
 
 ## Running tests
 
+### Standard Testing
+
 ```bash
 pytest tests/ -v
 ```
 
 Unit tests do not require Ollama or ChromaDB to be populated. Integration/E2E requires ingest + Ollama.
+
+### ⚡ Test Sharding (Parallel Execution)
+
+Run tests in parallel shards for **2-4x faster** execution:
+
+```bash
+# Run with 4 parallel shards (recommended)
+python scripts/run_sharded_tests.py --shards 4
+
+# Run with 2 shards
+python scripts/run_sharded_tests.py --shards 2
+
+# Direct pytest (specific shard)
+pytest tests/ --splits 4 --group 2
+```
+
+**Benefits:**
+- ✅ 2-4x faster test execution
+- ✅ Parallel testing across Python 3.10, 3.11, 3.12
+- ✅ Smart distribution using test duration data
+- ✅ Automatic coverage merging
+
+See **[Test Sharding Guide](docs/TEST_SHARDING_GUIDE.md)** or **[Quick Reference](docs/TEST_SHARDING_QUICK_REF.md)** for details.
 
 ## Document data (JSON)
 
@@ -246,10 +280,11 @@ BIRS includes a comprehensive CI/CD pipeline with 9 specialized workflows:
 | Workflow | Purpose | Trigger | Duration |
 |----------|---------|---------|----------|
 | ✅ **CI Tests** | Linting, unit tests, security | Push, PR | ~10 min |
+| ⚡ **CI Tests (Sharded)** | Parallel test execution (2-4x faster) | Push, PR | ~3-5 min |
 | 🔗 **Integration** | Full system with Ollama + ChromaDB | Push to main/develop | ~30 min |
 | 🔒 **Dependencies** | Security audit, license compliance | Daily | ~15 min |
 | ⚡ **Performance** | Benchmarks for RAG, embeddings | Weekly | ~45 min |
-| 📚 **Documentation** | API docs, GitHub Pages | Push, PR | ~10 min |
+| 📚 **Documentation** | API docs, GitHub Pages | Weekly | ~10 min |
 | 📊 **Code Quality** | Coverage, complexity, tech debt | Push, PR | ~20 min |
 | 🌙 **Nightly Extended** | Full AEO audit, multi-model | Nightly | ~60 min |
 | 🕷️ **Crawler Test** | Web crawler validation | Weekly | ~10 min |

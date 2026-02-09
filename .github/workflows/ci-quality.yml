@@ -39,6 +39,8 @@ jobs:
           pip install pytest pytest-cov coverage
 
       - name: Run tests with coverage
+        env:
+          PYTHONPATH: ${{ github.workspace }}
         run: |
           pytest tests/ \
             --cov=src \
@@ -51,7 +53,7 @@ jobs:
 
       - name: Generate coverage badge
         run: |
-          python << 'EOF'
+          python << 'PYTHON_SCRIPT'
 import json
 
 with open('coverage.json') as f:
@@ -68,8 +70,8 @@ with open('coverage.json') as f:
     else:
         color = 'red'
     
-    print(f"Coverage: {coverage:.1f}%")
-    print(f"Color: {color}")
+    print(f'Coverage: {coverage:.1f}%')
+    print(f'Color: {color}')
     
     # Create simple badge data
     with open('coverage-badge.json', 'w') as out:
@@ -79,7 +81,8 @@ with open('coverage.json') as f:
             'message': f'{coverage:.1f}%',
             'color': color
         }, out)
-EOF
+PYTHON_SCRIPT
+
 
       - name: Display coverage summary
         run: |

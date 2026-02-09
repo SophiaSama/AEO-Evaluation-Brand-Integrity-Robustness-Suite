@@ -1,4 +1,5 @@
 """Compare BIRS results across multiple Ollama models."""
+
 import json
 import os
 import subprocess
@@ -9,98 +10,96 @@ from src.run_suite import run_suite
 
 def compare_models(models, output_dir="results/model_comparison"):
     """Run BIRS suite on multiple models and compare results.
-    
+
     Args:
         models: List of Ollama model names to compare
         output_dir: Directory to save comparison results
-    
+
     Returns:
         dict: Comparison results for all models
     """
     Path(output_dir).mkdir(parents=True, exist_ok=True)
     results = {}
-    
-    print("\n" + "="*60)
+
+    print("\n" + "=" * 60)
     print(f"COMPARING {len(models)} MODELS")
-    print("="*60)
-    
+    print("=" * 60)
+
     for i, model in enumerate(models, 1):
         print(f"\n[{i}/{len(models)}] Testing model: {model}")
         print("-" * 60)
-        
+
         # Set model via environment variable
-        os.environ['OLLAMA_MODEL'] = model
-        
+        os.environ["OLLAMA_MODEL"] = model
+
         try:
             # Run the test suite
             suite_results = run_suite()
-            
+
             # Save individual model results
             model_file = Path(output_dir) / f"{model.replace(':', '_')}_results.json"
-            with open(model_file, 'w') as f:
+            with open(model_file, "w") as f:
                 json.dump(suite_results, f, indent=2)
-            
+
             results[model] = suite_results
             print(f"✓ {model} complete")
-            
+
         except Exception as e:
             print(f"✗ {model} failed: {e}")
-            results[model] = {'error': str(e)}
-    
+            results[model] = {"error": str(e)}
+
     # Save comparison summary
     comparison_file = Path(output_dir) / "comparison.json"
     comparison_data = {
-        'timestamp': datetime.now().isoformat(),
-        'models_tested': len(models),
-        'results': results
+        "timestamp": datetime.now().isoformat(),
+        "models_tested": len(models),
+        "results": results,
     }
-    
-    with open(comparison_file, 'w') as f:
+
+    with open(comparison_file, "w") as f:
         json.dump(comparison_data, f, indent=2)
-    
+
     # Print summary table
-    print("\n" + "="*60)
+    print("\n" + "=" * 60)
     print("COMPARISON SUMMARY")
-    print("="*60)
-    
+    print("=" * 60)
+
     print("\n| Model | Avg Score | Passing Tests | Status |")
     print("|-------|-----------|---------------|--------|")
-    
+
     for model, data in results.items():
-        if 'error' in data:
+        if "error" in data:
             print(f"| {model} | ERROR | - | ✗ |")
             continue
-        
-        tests = data.get('tests', {})
+
+        tests = data.get("tests", {})
         if tests:
-            avg_score = sum(t['score'] for t in tests.values()) / len(tests)
-            passing = sum(1 for t in tests.values() if t['pass'])
+            avg_score = sum(t["score"] for t in tests.values()) / len(tests)
+            passing = sum(1 for t in tests.values() if t["pass"])
             status = "✓" if passing == len(tests) else "⚠"
             print(f"| {model} | {avg_score:.2f} | {passing}/{len(tests)} | {status} |")
-    
+
     print(f"\n📁 Results saved to: {output_dir}")
     print(f"📊 Summary: {comparison_file}")
-    
+
     # Generate comparison visualization
     _generate_comparison_html(results, output_dir)
-    
+
     return results
 
 
 def ensure_models_available(models):
     """Pull models from Ollama if not already available."""
-    print("\n" + "="*60)
+    print("\n" + "=" * 60)
     print("CHECKING MODEL AVAILABILITY")
-    print("="*60 + "\n")
-    
+    print("=" * 60 + "\n")
+
     for model in models:
         print(f"Ensuring {model} is available...")
         result = subprocess.run(
-            ['ollama', 'pull', model],
-            capture_output=True,
-            text=True
+            ["ollama", "pull", model], capture_output=True, text=True
         )
-        
+
         if result.returncode == 0:
             print(f"✓ {model} ready")
         else:
@@ -111,26 +110,26 @@ def _generate_comparison_html(results: dict, output_dir: str):
     """Generate interactive HTML comparison of multiple models."""
     try:
         from src.visualize import generate_html_report
-        
+
         print("\n📊 Generating comparison visualizations...")
-        
+
         # Generate individual reports
         output_path = Path(output_dir)
         for model in results.keys():
-            if 'error' not in results[model]:
+            if "error" not in results[model]:
                 model_file = output_path / f"{model.replace(':', '_')}_results.json"
                 if model_file.exists():
                     html_path = generate_html_report(model_file)
                     print(f"  ✓ {model}: {html_path.name}")
-        
+
         # Generate comparison dashboard
         comparison_html = _build_comparison_dashboard(results, output_dir)
         comparison_path = output_path / "comparison.html"
-        with open(comparison_path, 'w', encoding='utf-8') as f:
+        with open(comparison_path, "w", encoding="utf-8") as f:
             f.write(comparison_html)
-        
+
         print(f"\n🎉 Comparison dashboard: {comparison_path}")
-        
+
     except Exception as e:
         print(f"⚠️ Could not generate visualizations: {e}")
 
@@ -138,26 +137,34 @@ def _generate_comparison_html(results: dict, output_dir: str):
 def _build_comparison_dashboard(results: dict, output_dir: str) -> str:
     """Build comparison dashboard HTML."""
     from datetime import datetime
-    
+
     # Extract metrics for all models
     model_metrics = {}
     for model, data in results.items():
-        if 'error' in data:
+        if "error" in data:
             continue
-        
-        scoring = data.get('scoring', {})
-        tests = data.get('tests', {})
-        
+
+        scoring = data.get("scoring", {})
+        tests = data.get("tests", {})
+
         model_metrics[model] = {
-            'sentiment_drift': abs(scoring.get('sentiment_drift', 0)),
-            'citation_fidelity': scoring.get('citation_fidelity', 0),
-            'liar_score': scoring.get('liar_score', 0),
-            'avg_score': sum(t.get('score', 0) for t in tests.values()) / len(tests) if tests else 0,
-            'pass_rate': sum(1 for t in tests.values() if t.get('pass', False)) / len(tests) if tests else 0,
-            'tests_passed': sum(1 for t in tests.values() if t.get('pass', False)),
-            'tests_total': len(tests)
+            "sentiment_drift": abs(scoring.get("sentiment_drift", 0)),
+            "citation_fidelity": scoring.get("citation_fidelity", 0),
+            "liar_score": scoring.get("liar_score", 0),
+            "avg_score": (
+                sum(t.get("score", 0) for t in tests.values()) / len(tests)
+                if tests
+                else 0
+            ),
+            "pass_rate": (
+                sum(1 for t in tests.values() if t.get("pass", False)) / len(tests)
+                if tests
+                else 0
+            ),
+            "tests_passed": sum(1 for t in tests.values() if t.get("pass", False)),
+            "tests_total": len(tests),
         }
-    
+
     # Build HTML
     html = f"""<!DOCTYPE html>
 <html lang="en">
@@ -384,7 +391,7 @@ def _build_comparison_dashboard(results: dict, output_dir: str) -> str:
     </script>
 </body>
 </html>"""
-    
+
     return html
 
 
@@ -392,30 +399,30 @@ def _generate_model_links(results: dict) -> str:
     """Generate links to individual model reports."""
     links = []
     for model in results.keys():
-        if 'error' not in results[model]:
+        if "error" not in results[model]:
             filename = f"{model.replace(':', '_')}_results.html"
             links.append(f'<a href="{filename}" class="model-link">📊 {model}</a>')
-    return '\n'.join(links)
+    return "\n".join(links)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     # Default models to compare (fast, medium, high-quality)
     default_models = [
-        'llama3.2',      # Default BIRS model (balanced)
-        'mistral',       # Good instruction following
-        'phi3',          # Efficient small model
-        'gemma2:2b'      # Very fast, lower quality
+        "llama3.2",  # Default BIRS model (balanced)
+        "mistral",  # Good instruction following
+        "phi3",  # Efficient small model
+        "gemma2:2b",  # Very fast, lower quality
     ]
-    
+
     print("\n🔬 BIRS Multi-Model Comparison")
     print("This will test multiple Ollama models and compare results.")
     print(f"Models: {', '.join(default_models)}")
     print("\nNote: This may take 30-60 minutes depending on hardware.\n")
-    
+
     # Ensure models are available
     ensure_models_available(default_models)
-    
+
     # Run comparison
     results = compare_models(default_models)
-    
+
     print("\n✅ Comparison complete!")

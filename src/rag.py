@@ -3,6 +3,7 @@ RAG pipeline: ChromaDB + LangChain + Ollama.
 Supports querying either birs_clean (baseline) or birs_poisoned (attack simulation).
 No public LLM is ever called with poison data.
 """
+
 from langchain_community.chat_models import ChatOllama
 from langchain_community.embeddings import HuggingFaceEmbeddings
 from langchain_community.vectorstores import Chroma
@@ -74,12 +75,16 @@ def query_rag(question: str, use_clean_only: bool = False) -> str:
     return chain.invoke(question)
 
 
-def query_rag_with_context(question: str, use_clean_only: bool = False) -> tuple[str, list]:
+def query_rag_with_context(
+    question: str, use_clean_only: bool = False
+) -> tuple[str, list]:
     """
     Run RAG query and return (answer, list of retrieved document contents).
     Useful for citation fidelity and DeepEval context.
     """
-    retriever = get_retriever(COLLECTION_CLEAN if use_clean_only else COLLECTION_POISONED)
+    retriever = get_retriever(
+        COLLECTION_CLEAN if use_clean_only else COLLECTION_POISONED
+    )
     docs = retriever.invoke(question)
     context = "\n\n".join(doc.page_content for doc in docs)
     llm = ChatOllama(
