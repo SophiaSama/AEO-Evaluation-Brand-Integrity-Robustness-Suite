@@ -1,4 +1,25 @@
-# Brand Integrity Robustness Suite (BIRS## 1. (Optional) Crawl real-life data for the brand
+# Brand Integrity Robustness Suite (BIRS)
+
+> 🔒 **Security Guarantee:** All LLM inference runs **locally** using Ollama. No data ever sent to external APIs. See [Security Documentation](docs/SECURITY_LOCAL_LLM.md).
+
+A **sandboxed** test suite that checks how an AI answer engine reacts when it sees "poisoned" data about a brand—**without ever sending that data to a public LLM**. The default brand is **Manus** (the AI agent product); you can use **real-life crawled data** for clean docs or synthetic data.
+
+## Ethics: No Public LLM Injection
+
+We do **not** feed misinformation to Gemini, ChatGPT, or any live API. All tests run in a **local sandbox**:
+
+- **ChromaDB** = "fake internet" (5 truthful + 15 false documents)
+- **LangChain** = RAG orchestration
+- **Ollama (Llama 3.2)** = local LLM; **no data leaves your machine**
+- **GitHub Actions** = Local Ollama on runner; **no external API calls**
+
+You can reset the sandbox to "clean" and re-run with full control and repeatability.
+
+---
+
+## Quick Start
+
+### 1. (Optional) Crawl real-life data for the brand
 
 To use **real web content** about **Manus** (or another brand) as the "clean" documents:
 
@@ -16,7 +37,9 @@ python scripts/crawl_brand.py --brand MyBrand --urls "https://example.com" "http
 
 # Use configuration file
 python scripts/crawl_brand.py --brand MyBrand --seed-urls-file data/seed_urls.json
-```# 2. Ingest documents into ChromaDB
+```
+
+### 2. Ingest documents into ChromaDB
 
 Reads from `data/documents/documents.json` and creates two ChromaDB collections: `birs_clean` (5 truthful docs) and `birs_poisoned` (5 clean + 15 poison docs).
 
@@ -24,19 +47,9 @@ Reads from `data/documents/documents.json` and creates two ChromaDB collections:
 python scripts/ingest_documents.py
 ```
 
-First run will download the embedding model (~80MB). ChromaDB is stored under `data/chroma_birs/`.from Manus's website and search results, extracts main text, and updates `data/documents/documents.json` with new clean content. If you skip this step, the suite uses the bundled synthetic clean docs about Manus.
+First run will download the embedding model (~80MB). ChromaDB is stored under `data/chroma_birs/`.
 
-A **sandboxed** test suite that checks how an AI answer engine reacts when it sees "poisoned" data about a brand—**without ever sending that data to a public LLM**. The default brand is **Manus** (the AI agent product); you can use **real-life crawled data** for clean docs or synthetic data.
-
-## Ethics: No Public LLM Injection
-
-We do **not** feed misinformation to Gemini, ChatGPT, or any live API. All tests run in a **local sandbox**:
-
-- **ChromaDB** = "fake internet" (5 truthful + 15 false documents)
-- **LangChain** = RAG orchestration
-- **Ollama (Llama 3.2)** = local LLM; no data leaves your machine
-
-You can reset the sandbox to "clean" and re-run with full control and repeatability.
+---
 
 ## Requirements
 
@@ -96,11 +109,18 @@ print(answer)
 
 ## 4. Run full BIRS suite
 
-Runs: baseline (clean) → BIRS-01, BIRS-02, BIRS-03 (poisoned RAG) → scoring → saves JSON + Markdown to `results/`.
+Runs: baseline (clean) → BIRS-01, BIRS-02, BIRS-03 (poisoned RAG) → scoring → saves JSON + Markdown + **Interactive HTML** to `results/`.
 
 ```bash
 python -m src.run_suite
 ```
+
+**Outputs:**
+- 📄 `results/birs_results.json` - Test data
+- 📊 `results/birs_results.html` - **Interactive visual report** 🎉
+- 📝 `results/birs_report.md` - Markdown summary
+
+Open `birs_results.html` in your browser for interactive charts showing sentiment analysis, test scores, and robustness profiles!
 
 Or from Python:
 
@@ -109,6 +129,47 @@ from src.run_suite import run_suite
 path = run_suite()
 print(path)  # results/birs_results.json
 ```
+
+### 📊 Visualization Features
+
+**NEW:** Interactive HTML reports with beautiful visualizations:
+
+- 📈 **Sentiment Analysis** - Before/after comparison charts
+- 🎯 **Test Score Dashboard** - Visual pass/fail indicators
+- 🕸️ **Robustness Radar** - Multi-dimensional performance view
+- 🎨 **Beautiful UI** - Modern gradient design with interactive Plotly charts
+
+See **[Visualization Guide](docs/VISUALIZATION_GUIDE.md)** for details.
+
+### 🔄 Multi-Model Testing
+
+BIRS supports testing with **any Ollama model**. Switch models using environment variables:
+
+```powershell
+# Windows PowerShell
+$env:OLLAMA_MODEL = "mistral"
+python -m src.run_suite
+
+# Compare multiple models (with comparison dashboard!)
+python scripts/compare_models.py
+```
+
+```bash
+# Linux/Mac
+OLLAMA_MODEL=mistral python -m src.run_suite
+
+# Compare multiple models (with comparison dashboard!)
+python scripts/compare_models.py
+```
+
+**Popular model options:**
+- `llama3.2` (default) - Balanced speed/quality
+- `mistral` - Excellent instruction following
+- `phi3` - Fast & efficient
+- `gemma2:2b` - Very fast
+- `llama3.1:70b` - Best quality (requires 40GB+ RAM)
+
+See **[Multi-Model Testing Guide](docs/MULTI_MODEL_TESTING.md)** or **[Quick Reference](docs/MULTI_MODEL_QUICK_REF.md)** for details.
 
 ## 5. Reset sandbox to clean
 
@@ -173,3 +234,42 @@ AEO_Evaluation/
 ## License
 
 Use for learning and portfolio. Do not inject poison data into public LLMs.
+
+---
+
+## 🚀 CI/CD Pipelines
+
+BIRS includes a comprehensive CI/CD pipeline with 9 specialized workflows:
+
+**🔧 Infrastructure:** Runs on GitHub-hosted Ubuntu runners - **no Docker required!** All workflows use native Python and tools for faster execution and simpler configuration. See [Docker Optional Guide](docs/CI_CD_DOCKER_OPTIONAL.md) if needed.
+
+| Workflow | Purpose | Trigger | Duration |
+|----------|---------|---------|----------|
+| ✅ **CI Tests** | Linting, unit tests, security | Push, PR | ~10 min |
+| 🔗 **Integration** | Full system with Ollama + ChromaDB | Push to main/develop | ~30 min |
+| 🔒 **Dependencies** | Security audit, license compliance | Daily | ~15 min |
+| ⚡ **Performance** | Benchmarks for RAG, embeddings | Weekly | ~45 min |
+| 📚 **Documentation** | API docs, GitHub Pages | Push, PR | ~10 min |
+| 📊 **Code Quality** | Coverage, complexity, tech debt | Push, PR | ~20 min |
+| 🌙 **Nightly Extended** | Full AEO audit, multi-model | Nightly | ~60 min |
+| 🕷️ **Crawler Test** | Web crawler validation | Weekly | ~10 min |
+| 📦 **Release** | Build & publish releases | Tag push | ~15 min |
+
+**Documentation:**
+- 📖 [**CI/CD Pipeline Guide**](docs/CI_CD_PIPELINES.md) - Complete workflow documentation
+- 🏗️ [**Pipeline Architecture**](docs/CI_CD_ARCHITECTURE.md) - Visual workflow diagrams
+- � [**CI/CD Review & Optimization**](docs/CI_CD_SUMMARY.md) - Performance analysis & recommendations ⭐
+- 🚀 [**CI/CD Quick Wins**](docs/CI_CD_QUICK_WINS.md) - 39% faster CI in 1 hour
+- �🔒 [**Security: Local-Only LLM**](docs/SECURITY_LOCAL_LLM.md) - Privacy guarantees & verification
+- 🤖 [**Multi-Model Testing**](docs/MULTI_MODEL_TESTING.md) - Test with different Ollama models
+- ⚡ [**Multi-Model Quick Reference**](docs/MULTI_MODEL_QUICK_REF.md) - Fast model switching guide
+- 📊 [**Visualization Guide**](docs/VISUALIZATION_GUIDE.md) - Interactive HTML reports with charts
+
+**Quality Metrics:**
+- Code coverage reports with PR comments
+- Performance benchmarks with historical tracking
+- Security scans with automatic alerts
+- Technical debt monitoring
+- Automated issue creation on test failures
+
+**See Also:** [GitHub Actions Workflows](.github/workflows/)

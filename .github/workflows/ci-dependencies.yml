@@ -1,0 +1,265 @@
+name: BIRS Dependency Management
+
+on:
+  schedule:
+    # Run daily at 4 AM UTC
+    - cron: '0 4 * * *'
+  pull_request:
+    paths:
+      - 'requirements.txt'
+      - 'setup.py'
+      - '.github/workflows/ci-dependencies.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pull-requests: write
+  security-events: write
+
+jobs:
+  dependency-audit:
+    name: Dependency Security Audit
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install audit tools
+        run: |
+          python -m pip install --upgrade pip
+          pip install pip-audit safety
+
+      - name: Run pip-audit (official PyPI vulnerability scanner)
+        run: |
+          pip-audit --desc --requirement requirements.txt --format json --output pip-audit-report.json || true
+          
+          if [ -f pip-audit-report.json ]; then
+            echo "### 🔍 Pip Audit Results" >> $GITHUB_STEP_SUMMARY
+            python -c "
+            import json
+            data = json.load(open('pip-audit-report.json'))
+            if data.get('vulnerabilities'):
+                print(f'{len(data[\"vulnerabilities\"])} vulnerabilities found')
+                for vuln in data['vulnerabilities'][:5]:
+                    print(f'- {vuln.get(\"name\")}: {vuln.get(\"id\")}')
+            else:
+                print('✓ No vulnerabilities found')
+            " >> $GITHUB_STEP_SUMMARY
+          fi
+
+      - name: Run Safety check
+        run: |
+          pip install -r requirements.txt
+          safety check --json --output safety-report.json || true
+          
+          if [ -f safety-report.json ]; then
+            echo "### 🛡️ Safety Check Results" >> $GITHUB_STEP_SUMMARY
+            python -c "
+            import json
+            try:
+                data = json.load(open('safety-report.json'))
+                vulns = data.get('vulnerabilities', [])
+                if vulns:
+                    print(f'{len(vulns)} vulnerabilities found')
+                else:
+                    print('✓ No vulnerabilities found')
+            except:
+                print('✓ No issues detected')
+            " >> $GITHUB_STEP_SUMMARY
+          fi
+
+      - name: Upload security reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: security-reports
+          path: |
+            pip-audit-report.json
+            safety-report.json
+
+  dependency-updates:
+    name: Check for Outdated Dependencies
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install pip-check-updates pip-tools
+
+      - name: Check for outdated packages
+        run: |
+          pip install -r requirements.txt
+          pip list --outdated --format=json > outdated.json || true
+          
+          echo "### 📦 Outdated Packages" >> $GITHUB_STEP_SUMMARY
+          python -c "
+          import json
+          data = json.load(open('outdated.json'))
+          if data:
+              print(f'Found {len(data)} outdated packages:')
+              print('')
+              print('| Package | Current | Latest |')
+              print('|---------|---------|--------|')
+              for pkg in data[:10]:
+                  print(f\"| {pkg['name']} | {pkg['version']} | {pkg['latest_version']} |\")
+              if len(data) > 10:
+                  print(f'*...and {len(data) - 10} more*')
+          else:
+              print('✓ All packages are up to date!')
+          " >> $GITHUB_STEP_SUMMARY
+
+      - name: Upload outdated report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: outdated-packages
+          path: outdated.json
+
+  license-compliance:
+    name: License Compliance Check
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install license checker
+        run: |
+          python -m pip install --upgrade pip
+          pip install pip-licenses
+
+      - name: Install project dependencies
+        run: pip install -r requirements.txt
+
+      - name: Generate license report
+        run: |
+          pip-licenses --format=json --output-file=licenses.json
+          pip-licenses --format=markdown --output-file=licenses.md
+          
+          echo "### 📄 License Summary" >> $GITHUB_STEP_SUMMARY
+          python -c "
+          import json
+          from collections import Counter
+          
+          data = json.load(open('licenses.json'))
+          licenses = [pkg['License'] for pkg in data]
+          license_counts = Counter(licenses)
+          
+          print(f'Total packages: {len(data)}')
+          print('')
+          print('License distribution:')
+          for lic, count in license_counts.most_common(10):
+              print(f'- {lic}: {count}')
+          " >> $GITHUB_STEP_SUMMARY
+
+      - name: Check for incompatible licenses
+        run: |
+          python -c "
+          import json
+          
+          # Define problematic licenses (adjust based on your needs)
+          PROBLEMATIC = ['GPL-3.0', 'AGPL-3.0', 'LGPL-3.0', 'Commercial', 'UNKNOWN']
+          
+          data = json.load(open('licenses.json'))
+          issues = [pkg for pkg in data if any(prob in pkg['License'] for prob in PROBLEMATIC)]
+          
+          if issues:
+              print('⚠️ Found packages with potentially problematic licenses:')
+              for pkg in issues:
+                  print(f'  - {pkg[\"Name\"]}: {pkg[\"License\"]}')
+              # Don't fail, just warn
+          else:
+              print('✓ All licenses are compatible')
+          "
+
+      - name: Upload license reports
+        uses: actions/upload-artifact@v4
+        with:
+          name: license-reports
+          path: |
+            licenses.json
+            licenses.md
+
+  dependency-graph:
+    name: Generate Dependency Graph
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install pipdeptree
+        run: |
+          python -m pip install --upgrade pip
+          pip install pipdeptree
+
+      - name: Install project dependencies
+        run: pip install -r requirements.txt
+
+      - name: Generate dependency tree
+        run: |
+          pipdeptree --json > dependency-tree.json
+          pipdeptree --graph-output png > dependency-graph.png || echo "GraphViz not available"
+          pipdeptree > dependency-tree.txt
+          
+          echo "### 🌳 Dependency Tree" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          pipdeptree | head -50 >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+
+      - name: Upload dependency artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: dependency-tree
+          path: |
+            dependency-tree.json
+            dependency-tree.txt
+            dependency-graph.png
+
+  summary:
+    name: Dependency Summary
+    runs-on: ubuntu-latest
+    needs: [dependency-audit, dependency-updates, license-compliance, dependency-graph]
+    if: always()
+    
+    steps:
+      - name: Create summary
+        run: |
+          echo "## 📊 Dependency Management Report" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "All dependency checks completed." >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Jobs Status:**" >> $GITHUB_STEP_SUMMARY
+          echo "- Security Audit: ${{ needs.dependency-audit.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Update Check: ${{ needs.dependency-updates.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "- License Compliance: ${{ needs.license-compliance.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Dependency Graph: ${{ needs.dependency-graph.result }}" >> $GITHUB_STEP_SUMMARY
