@@ -11,9 +11,16 @@ from langchain_core.output_parsers import StrOutputParser
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.runnables import RunnablePassthrough
 
-from src.config import (CHROMA_DIR, COLLECTION_CLEAN, COLLECTION_POISONED,
-                        EMBEDDING_MODEL, OLLAMA_BASE_URL, OLLAMA_MODEL,
-                        RAG_TEMPERATURE, RAG_TOP_K)
+from src.config import (
+    CHROMA_DIR,
+    COLLECTION_CLEAN,
+    COLLECTION_POISONED,
+    EMBEDDING_MODEL,
+    OLLAMA_BASE_URL,
+    OLLAMA_MODEL,
+    RAG_TEMPERATURE,
+    RAG_TOP_K,
+)
 
 RAG_PROMPT = """You are a helpful assistant. Answer the user's question based ONLY on the following context. If the context does not contain enough information, say so. Do not make up facts or numbers.
 
