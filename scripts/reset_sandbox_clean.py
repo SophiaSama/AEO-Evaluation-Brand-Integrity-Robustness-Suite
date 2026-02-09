@@ -8,10 +8,11 @@ import shutil
 import sys
 from pathlib import Path
 
+from src.config import CHROMA_DIR
+
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
 
-from src.config import CHROMA_DIR
 
 if __name__ == "__main__":
     if CHROMA_DIR.exists():

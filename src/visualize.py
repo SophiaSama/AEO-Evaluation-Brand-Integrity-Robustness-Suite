@@ -76,7 +76,7 @@ def _build_html_report(results: Dict[str, Any]) -> str:
             padding: 0;
             box-sizing: border-box;
         }}
-        
+
         body {{
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
@@ -84,7 +84,7 @@ def _build_html_report(results: Dict[str, Any]) -> str:
             padding: 20px;
             line-height: 1.6;
         }}
-        
+
         .container {{
             max-width: 1400px;
             margin: 0 auto;
@@ -93,25 +93,25 @@ def _build_html_report(results: Dict[str, Any]) -> str:
             box-shadow: 0 20px 60px rgba(0,0,0,0.3);
             overflow: hidden;
         }}
-        
+
         .header {{
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: white;
             padding: 40px;
             text-align: center;
         }}
-        
+
         .header h1 {{
             font-size: 2.5em;
             margin-bottom: 10px;
             font-weight: 700;
         }}
-        
+
         .header .subtitle {{
             font-size: 1.2em;
             opacity: 0.9;
         }}
-        
+
         .timestamp {{
             background: rgba(255,255,255,0.1);
             display: inline-block;
@@ -120,18 +120,18 @@ def _build_html_report(results: Dict[str, Any]) -> str:
             margin-top: 15px;
             font-size: 0.9em;
         }}
-        
+
         .content {{
             padding: 40px;
         }}
-        
+
         .metric-cards {{
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
             gap: 20px;
             margin-bottom: 40px;
         }}
-        
+
         .metric-card {{
             background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
             padding: 25px;
@@ -139,20 +139,20 @@ def _build_html_report(results: Dict[str, Any]) -> str:
             box-shadow: 0 4px 6px rgba(0,0,0,0.1);
             transition: transform 0.3s ease, box-shadow 0.3s ease;
         }}
-        
+
         .metric-card:hover {{
             transform: translateY(-5px);
             box-shadow: 0 8px 15px rgba(0,0,0,0.2);
         }}
-        
+
         .metric-card.pass {{
             background: linear-gradient(135deg, #84fab0 0%, #8fd3f4 100%);
         }}
-        
+
         .metric-card.fail {{
             background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
         }}
-        
+
         .metric-card h3 {{
             font-size: 0.9em;
             text-transform: uppercase;
@@ -160,32 +160,32 @@ def _build_html_report(results: Dict[str, Any]) -> str:
             margin-bottom: 10px;
             color: #555;
         }}
-        
+
         .metric-value {{
             font-size: 2.5em;
             font-weight: 700;
             color: #333;
         }}
-        
+
         .metric-label {{
             font-size: 0.85em;
             color: #666;
             margin-top: 5px;
         }}
-        
+
         .chart-section {{
             margin: 40px 0;
             padding: 30px;
             background: #f8f9fa;
             border-radius: 12px;
         }}
-        
+
         .chart-section h2 {{
             color: #667eea;
             margin-bottom: 20px;
             font-size: 1.8em;
         }}
-        
+
         .chart-container {{
             background: white;
             padding: 20px;
@@ -193,14 +193,14 @@ def _build_html_report(results: Dict[str, Any]) -> str:
             box-shadow: 0 2px 4px rgba(0,0,0,0.1);
             margin-bottom: 20px;
         }}
-        
+
         .test-grid {{
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
             gap: 20px;
             margin-top: 30px;
         }}
-        
+
         .test-card {{
             background: white;
             padding: 20px;
@@ -208,20 +208,20 @@ def _build_html_report(results: Dict[str, Any]) -> str:
             box-shadow: 0 2px 8px rgba(0,0,0,0.1);
             border-left: 4px solid #667eea;
         }}
-        
+
         .test-card.pass {{
             border-left-color: #10b981;
         }}
-        
+
         .test-card.fail {{
             border-left-color: #ef4444;
         }}
-        
+
         .test-card h3 {{
             color: #333;
             margin-bottom: 10px;
         }}
-        
+
         .test-status {{
             display: inline-block;
             padding: 4px 12px;
@@ -230,17 +230,17 @@ def _build_html_report(results: Dict[str, Any]) -> str:
             font-weight: 600;
             margin-bottom: 10px;
         }}
-        
+
         .test-status.pass {{
             background: #d1fae5;
             color: #065f46;
         }}
-        
+
         .test-status.fail {{
             background: #fee2e2;
             color: #991b1b;
         }}
-        
+
         .footer {{
             background: #f8f9fa;
             padding: 20px;
@@ -248,7 +248,7 @@ def _build_html_report(results: Dict[str, Any]) -> str:
             color: #666;
             font-size: 0.9em;
         }}
-        
+
         @media print {{
             body {{
                 background: white;
@@ -266,7 +266,7 @@ def _build_html_report(results: Dict[str, Any]) -> str:
             <p class="subtitle">Brand Integrity Robustness Suite</p>
             <div class="timestamp">Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}</div>
         </div>
-        
+
         <div class="content">
             <!-- Key Metrics -->
             <div class="metric-cards">
@@ -275,26 +275,26 @@ def _build_html_report(results: Dict[str, Any]) -> str:
                     <div class="metric-value">{sentiment_drift:+.2f}</div>
                     <div class="metric-label">Lower is better (more resilient)</div>
                 </div>
-                
+
                 <div class="metric-card {_get_status_class(citation_fidelity, threshold=0.5)}">
                     <h3>Citation Fidelity</h3>
                     <div class="metric-value">{citation_fidelity:.2f}</div>
                     <div class="metric-label">Higher is better (official sources)</div>
                 </div>
-                
+
                 <div class="metric-card {_get_status_class(liar_score, threshold=0.5, lower_is_better=True)}">
                     <h3>Liar Score</h3>
                     <div class="metric-value">{liar_score:.2f}</div>
                     <div class="metric-label">Lower is better (resisted lies)</div>
                 </div>
-                
+
                 <div class="metric-card {_get_overall_status(test_passes)}">
                     <h3>Tests Passed</h3>
                     <div class="metric-value">{sum(test_passes.values())}/{len(test_passes)}</div>
                     <div class="metric-label">Overall pass rate</div>
                 </div>
             </div>
-            
+
             <!-- Sentiment Comparison Chart -->
             <div class="chart-section">
                 <h2>📊 Sentiment Analysis</h2>
@@ -302,7 +302,7 @@ def _build_html_report(results: Dict[str, Any]) -> str:
                     <div id="sentimentChart"></div>
                 </div>
             </div>
-            
+
             <!-- Test Scores Chart -->
             <div class="chart-section">
                 <h2>🎯 Test Case Scores</h2>
@@ -310,7 +310,7 @@ def _build_html_report(results: Dict[str, Any]) -> str:
                     <div id="testScoresChart"></div>
                 </div>
             </div>
-            
+
             <!-- Scoring Metrics Radar -->
             <div class="chart-section">
                 <h2>🕸️ Robustness Profile</h2>
@@ -318,7 +318,7 @@ def _build_html_report(results: Dict[str, Any]) -> str:
                     <div id="radarChart"></div>
                 </div>
             </div>
-            
+
             <!-- Test Results Details -->
             <div class="chart-section">
                 <h2>📋 Test Case Details</h2>
@@ -327,13 +327,13 @@ def _build_html_report(results: Dict[str, Any]) -> str:
                 </div>
             </div>
         </div>
-        
+
         <div class="footer">
             <p>BIRS - Brand Integrity Robustness Suite | All tests run locally with Ollama</p>
             <p>🔒 No data sent to external APIs | Privacy-preserving by design</p>
         </div>
     </div>
-    
+
     <script>
         // Sentiment Comparison Chart
         const sentimentData = [{{
@@ -353,7 +353,7 @@ def _build_html_report(results: Dict[str, Any]) -> str:
             text: [{sentiment_before:.3f}, {sentiment_after:.3f}].map(v => v.toFixed(3)),
             textposition: 'auto',
         }}];
-        
+
         const sentimentLayout = {{
             title: 'Sentiment Before vs After Poisoning',
             yaxis: {{
@@ -368,9 +368,9 @@ def _build_html_report(results: Dict[str, Any]) -> str:
             showlegend: false,
             height: 400
         }};
-        
+
         Plotly.newPlot('sentimentChart', sentimentData, sentimentLayout, {{responsive: true}});
-        
+
         // Test Scores Chart
         const testScoresData = [{{
             x: {json.dumps(list(test_scores.keys()))},
@@ -383,7 +383,7 @@ def _build_html_report(results: Dict[str, Any]) -> str:
             text: {json.dumps([f"{v:.2f}" for v in test_scores.values()])},
             textposition: 'auto',
         }}];
-        
+
         const testScoresLayout = {{
             title: 'Test Case Scores (Higher is Better)',
             yaxis: {{
@@ -399,9 +399,9 @@ def _build_html_report(results: Dict[str, Any]) -> str:
             showlegend: false,
             height: 400
         }};
-        
+
         Plotly.newPlot('testScoresChart', testScoresData, testScoresLayout, {{responsive: true}});
-        
+
         // Radar Chart for Robustness Profile
         const radarData = [{{
             type: 'scatterpolar',
@@ -416,7 +416,7 @@ def _build_html_report(results: Dict[str, Any]) -> str:
             marker: {{ color: '#667eea' }},
             line: {{ color: '#667eea' }}
         }}];
-        
+
         const radarLayout = {{
             polar: {{
                 radialaxis: {{
@@ -431,7 +431,7 @@ def _build_html_report(results: Dict[str, Any]) -> str:
             showlegend: false,
             height: 500
         }};
-        
+
         Plotly.newPlot('radarChart', radarData, radarLayout, {{responsive: true}});
     </script>
 </body>

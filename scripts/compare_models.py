@@ -180,13 +180,13 @@ def _build_comparison_dashboard(results: dict, output_dir: str) -> str:
             padding: 0;
             box-sizing: border-box;
         }}
-        
+
         body {{
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             padding: 20px;
         }}
-        
+
         .container {{
             max-width: 1600px;
             margin: 0 auto;
@@ -195,35 +195,35 @@ def _build_comparison_dashboard(results: dict, output_dir: str) -> str:
             box-shadow: 0 20px 60px rgba(0,0,0,0.3);
             overflow: hidden;
         }}
-        
+
         .header {{
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: white;
             padding: 40px;
             text-align: center;
         }}
-        
+
         .header h1 {{
             font-size: 2.5em;
             margin-bottom: 10px;
         }}
-        
+
         .content {{
             padding: 40px;
         }}
-        
+
         .chart-section {{
             margin: 30px 0;
             padding: 30px;
             background: #f8f9fa;
             border-radius: 12px;
         }}
-        
+
         .chart-section h2 {{
             color: #667eea;
             margin-bottom: 20px;
         }}
-        
+
         .chart-container {{
             background: white;
             padding: 20px;
@@ -231,14 +231,14 @@ def _build_comparison_dashboard(results: dict, output_dir: str) -> str:
             box-shadow: 0 2px 4px rgba(0,0,0,0.1);
             margin-bottom: 20px;
         }}
-        
+
         .model-links {{
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
             gap: 15px;
             margin-top: 30px;
         }}
-        
+
         .model-link {{
             background: linear-gradient(135deg, #84fab0 0%, #8fd3f4 100%);
             padding: 20px;
@@ -249,7 +249,7 @@ def _build_comparison_dashboard(results: dict, output_dir: str) -> str:
             font-weight: 600;
             transition: transform 0.3s ease;
         }}
-        
+
         .model-link:hover {{
             transform: translateY(-5px);
         }}
@@ -264,7 +264,7 @@ def _build_comparison_dashboard(results: dict, output_dir: str) -> str:
                 Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
             </p>
         </div>
-        
+
         <div class="content">
             <!-- Pass Rate Comparison -->
             <div class="chart-section">
@@ -273,7 +273,7 @@ def _build_comparison_dashboard(results: dict, output_dir: str) -> str:
                     <div id="passRateChart"></div>
                 </div>
             </div>
-            
+
             <!-- Average Scores -->
             <div class="chart-section">
                 <h2>📊 Average Test Scores</h2>
@@ -281,7 +281,7 @@ def _build_comparison_dashboard(results: dict, output_dir: str) -> str:
                     <div id="avgScoreChart"></div>
                 </div>
             </div>
-            
+
             <!-- Robustness Metrics -->
             <div class="chart-section">
                 <h2>🛡️ Robustness Metrics</h2>
@@ -289,7 +289,7 @@ def _build_comparison_dashboard(results: dict, output_dir: str) -> str:
                     <div id="robustnessChart"></div>
                 </div>
             </div>
-            
+
             <!-- Individual Reports -->
             <div class="chart-section">
                 <h2>📄 Individual Model Reports</h2>
@@ -299,7 +299,7 @@ def _build_comparison_dashboard(results: dict, output_dir: str) -> str:
             </div>
         </div>
     </div>
-    
+
     <script>
         // Pass Rate Chart
         const passRateData = [{{
@@ -315,7 +315,7 @@ def _build_comparison_dashboard(results: dict, output_dir: str) -> str:
             text: {json.dumps([f"{m['tests_passed']}/{m['tests_total']}" for m in model_metrics.values()])},
             textposition: 'auto',
         }}];
-        
+
         const passRateLayout = {{
             title: 'Test Pass Rate by Model',
             yaxis: {{ title: 'Pass Rate (%)', range: [0, 100] }},
@@ -326,9 +326,9 @@ def _build_comparison_dashboard(results: dict, output_dir: str) -> str:
             showlegend: false,
             height: 400
         }};
-        
+
         Plotly.newPlot('passRateChart', passRateData, passRateLayout, {{responsive: true}});
-        
+
         // Average Score Chart
         const avgScoreData = [{{
             x: {json.dumps(list(model_metrics.keys()))},
@@ -338,7 +338,7 @@ def _build_comparison_dashboard(results: dict, output_dir: str) -> str:
             text: {json.dumps([f"{m['avg_score']:.2f}" for m in model_metrics.values()])},
             textposition: 'auto',
         }}];
-        
+
         const avgScoreLayout = {{
             title: 'Average Test Score by Model',
             yaxis: {{ title: 'Average Score', range: [0, 1] }},
@@ -349,9 +349,9 @@ def _build_comparison_dashboard(results: dict, output_dir: str) -> str:
             showlegend: false,
             height: 400
         }};
-        
+
         Plotly.newPlot('avgScoreChart', avgScoreData, avgScoreLayout, {{responsive: true}});
-        
+
         // Robustness Chart (Grouped Bar)
         const robustnessData = [
             {{
@@ -376,7 +376,7 @@ def _build_comparison_dashboard(results: dict, output_dir: str) -> str:
                 marker: {{ color: '#f59e0b' }}
             }}
         ];
-        
+
         const robustnessLayout = {{
             title: 'Robustness Metrics Comparison (Higher is Better)',
             yaxis: {{ title: 'Score', range: [0, 1] }},
@@ -387,7 +387,7 @@ def _build_comparison_dashboard(results: dict, output_dir: str) -> str:
             font: {{ family: 'system-ui, sans-serif' }},
             height: 500
         }};
-        
+
         Plotly.newPlot('robustnessChart', robustnessData, robustnessLayout, {{responsive: true}});
     </script>
 </body>

@@ -31,7 +31,8 @@ def _get_sentiment(text: str) -> float:
     return _sentiment_analyzer.polarity_scores(text)["compound"]
 
 
-# Default seed URLs for known brands (can be overridden via config file or command-line)
+# Default seed URLs for known brands (can be overridden via config file or
+# command-line)
 BRAND_SEED_URLS = {
     "manus": [
         "https://manus.im/",
