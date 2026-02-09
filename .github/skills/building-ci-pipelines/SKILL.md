@@ -441,9 +441,27 @@ Token-free execution:
 - **scripts/analyze_ci_performance.py** - CI metrics analysis
 - **scripts/setup_oidc_aws.py** - Automate AWS OIDC setup
 
-## Related Skills
+## Lesson Learned: Deterministic Format Checks (Black/isort) Can Break CI
 
-**testing-strategies** - Test execution strategies (unit, integration, E2E)
-**deploying-applications** - Deployment automation and GitOps
-**auth-security** - Secrets management and authentication
-**observability** - Pipeline monitoring and alerting
+Formatters like **Black** and **isort** are *deterministic* tools. In CI they are typically run in “check” mode (e.g., `black --check`, `isort --check-only`) which means **any difference** between committed code and the formatter’s expected output fails the pipeline—even if the code still runs.
+
+### Common Root Causes
+- **Manual edits** or **merge conflict resolutions** that introduce non-Black wrapping.
+- **Editor auto-format / import organizing** that doesn’t match repo rules.
+- **Version drift**: local formatter versions differ from CI.
+- **Tool ordering**: running Black before isort can cause “ping-pong” diffs in import blocks.
+
+### Practical CI Pipeline Pattern (Python)
+- Pin tool versions (recommended) and run check steps **in this order**:
+  - `isort --check-only src/ tests/ scripts/`
+  - `black --check src/ tests/ scripts/`
+- Provide a “fix” path developers can run locally (same order):
+  - `isort src/ tests/ scripts/`
+  - `black src/ tests/ scripts/`
+
+### Recommended Configuration
+Configure isort to be Black-compatible to minimize conflicts:
+- set `profile = "black"` (via `pyproject.toml` or `.isort.cfg`)
+
+### Debugging Tip
+Use CI output like **“would reformat …”** as the exact checklist of files that need formatting, then re-run formatters locally and commit the result.
