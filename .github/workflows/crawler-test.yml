@@ -1,0 +1,148 @@
+name: BIRS Crawler Test
+
+on:
+  schedule:
+    # Run weekly on Monday at 3 AM UTC
+    - cron: '0 3 * * 1'
+  workflow_dispatch:
+    inputs:
+      brand:
+        description: 'Brand to crawl'
+        required: false
+        default: 'Manus'
+        type: string
+      max_docs:
+        description: 'Maximum documents to crawl'
+        required: false
+        default: '3'
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  test-crawler:
+    name: Test Web Crawler
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Test crawler with default brand
+        run: |
+          BRAND="${{ github.event.inputs.brand }}"
+          MAX_DOCS="${{ github.event.inputs.max_docs }}"
+          
+          if [ -z "$BRAND" ]; then
+            BRAND="Manus"
+          fi
+          if [ -z "$MAX_DOCS" ]; then
+            MAX_DOCS="3"
+          fi
+          
+          echo "Testing crawler with brand: $BRAND, max docs: $MAX_DOCS"
+          
+          python scripts/crawl_brand.py \
+            --brand "$BRAND" \
+            --max-docs "$MAX_DOCS" \
+            --no-warn-negative
+        timeout-minutes: 10
+
+      - name: Validate crawled data
+        run: |
+          python -c "
+          import json
+          from pathlib import Path
+          
+          docs_json = Path('data/documents/documents.json')
+          if docs_json.exists():
+              data = json.loads(docs_json.read_text())
+              clean_count = len(data.get('clean', []))
+              print(f'✓ Crawled {clean_count} clean documents')
+              assert clean_count > 0, 'No documents crawled'
+          else:
+              print('⚠ documents.json not found after crawl')
+          "
+
+      - name: Upload crawled data
+        uses: actions/upload-artifact@v4
+        with:
+          name: crawled-documents
+          path: data/documents/documents.json
+
+  test-crawler-with-config:
+    name: Test Crawler with Config File
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Test crawler with seed URLs config
+        run: |
+          if [ -f "data/seed_urls.example.json" ]; then
+            cp data/seed_urls.example.json data/seed_urls_test.json
+            
+            python scripts/crawl_brand.py \
+              --brand "Manus" \
+              --seed-urls-file data/seed_urls_test.json \
+              --max-docs 2
+            
+            echo "✓ Crawler worked with config file"
+          else
+            echo "⚠ No seed_urls.example.json found"
+          fi
+        timeout-minutes: 10
+
+  test-crawler-sentiment-filter:
+    name: Test Crawler Sentiment Filtering
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Test sentiment filtering
+        run: |
+          python scripts/crawl_brand.py \
+            --brand "Manus" \
+            --max-docs 3 \
+            --min-sentiment 0 \
+            --no-warn-negative
+          
+          echo "✓ Sentiment filtering test completed"
+        timeout-minutes: 10

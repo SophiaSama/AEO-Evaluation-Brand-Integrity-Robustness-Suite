@@ -1,0 +1,355 @@
+name: BIRS Performance Benchmarks
+
+on:
+  schedule:
+    # Run weekly on Sunday at midnight UTC
+    - cron: '0 0 * * 0'
+  workflow_dispatch:
+    inputs:
+      num_queries:
+        description: 'Number of benchmark queries to run'
+        required: false
+        default: '10'
+        type: string
+  push:
+    branches: [main]
+    paths:
+      - 'src/rag.py'
+      - 'src/baseline.py'
+      - 'scripts/ingest_documents.py'
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  benchmark-rag:
+    name: RAG Query Performance
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install Ollama
+        run: |
+          curl -fsSL https://ollama.com/install.sh | sh
+
+      - name: Start Ollama and pull model
+        run: |
+          ollama serve &
+          sleep 5
+          ollama pull llama3.2
+        timeout-minutes: 30
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Run ingest and time it
+        run: |
+          echo "### ⏱️ Ingestion Performance" >> $GITHUB_STEP_SUMMARY
+          
+          start_time=$(date +%s)
+          python scripts/ingest_documents.py
+          end_time=$(date +%s)
+          
+          duration=$((end_time - start_time))
+          echo "- **Ingestion time:** ${duration}s" >> $GITHUB_STEP_SUMMARY
+
+      - name: Benchmark RAG queries
+        run: |
+          NUM_QUERIES="${{ github.event.inputs.num_queries }}"
+          if [ -z "$NUM_QUERIES" ]; then
+            NUM_QUERIES="10"
+          fi
+          
+          python << 'EOF' > benchmark_results.json
+import json
+import time
+from src.baseline import get_baseline_response
+
+num_queries = int("$NUM_QUERIES")
+results = []
+
+for i in range(num_queries):
+    start = time.time()
+    answer, contexts = get_baseline_response()
+    end = time.time()
+    
+    results.append({
+        "query_num": i + 1,
+        "latency_ms": round((end - start) * 1000, 2),
+        "answer_length": len(answer),
+        "contexts_retrieved": len(contexts)
+    })
+
+# Calculate statistics
+latencies = [r["latency_ms"] for r in results]
+avg_latency = sum(latencies) / len(latencies)
+min_latency = min(latencies)
+max_latency = max(latencies)
+p95_latency = sorted(latencies)[int(len(latencies) * 0.95)]
+
+summary = {
+    "num_queries": num_queries,
+    "avg_latency_ms": round(avg_latency, 2),
+    "min_latency_ms": min_latency,
+    "max_latency_ms": max_latency,
+    "p95_latency_ms": p95_latency,
+    "queries": results
+}
+
+with open("benchmark_results.json", "w") as f:
+    json.dump(summary, f, indent=2)
+
+print(json.dumps(summary, indent=2))
+EOF
+
+      - name: Display benchmark results
+        run: |
+          echo "### 📊 RAG Query Benchmarks" >> $GITHUB_STEP_SUMMARY
+          python -c "
+          import json
+          data = json.load(open('benchmark_results.json'))
+          
+          print(f\"**Queries executed:** {data['num_queries']}\")
+          print(f\"**Average latency:** {data['avg_latency_ms']}ms\")
+          print(f\"**Min latency:** {data['min_latency_ms']}ms\")
+          print(f\"**Max latency:** {data['max_latency_ms']}ms\")
+          print(f\"**P95 latency:** {data['p95_latency_ms']}ms\")
+          " >> $GITHUB_STEP_SUMMARY
+
+      - name: Upload benchmark results
+        uses: actions/upload-artifact@v4
+        with:
+          name: rag-benchmark-results
+          path: benchmark_results.json
+
+  benchmark-embeddings:
+    name: Embedding Performance
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Benchmark embedding generation
+        run: |
+          python << 'EOF' > embedding_benchmark.json
+import json
+import time
+from sentence_transformers import SentenceTransformer
+
+# Test with different text sizes
+test_texts = {
+    "short": "Manus AI agent",
+    "medium": "Manus is an AI-powered autonomous agent that helps businesses automate complex workflows. " * 5,
+    "long": "Manus is an AI-powered autonomous agent that helps businesses automate complex workflows. " * 50
+}
+
+model = SentenceTransformer('all-MiniLM-L6-v2')
+results = {}
+
+for size, text in test_texts.items():
+    times = []
+    for _ in range(5):  # 5 runs per size
+        start = time.time()
+        embedding = model.encode(text)
+        end = time.time()
+        times.append((end - start) * 1000)  # Convert to ms
+    
+    results[size] = {
+        "text_length": len(text),
+        "avg_time_ms": round(sum(times) / len(times), 2),
+        "min_time_ms": round(min(times), 2),
+        "max_time_ms": round(max(times), 2),
+        "embedding_dim": len(embedding)
+    }
+
+with open("embedding_benchmark.json", "w") as f:
+    json.dump(results, f, indent=2)
+
+print(json.dumps(results, indent=2))
+EOF
+
+      - name: Display embedding results
+        run: |
+          echo "### 🔢 Embedding Performance" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Text Size | Avg Time | Text Length | Embedding Dim |" >> $GITHUB_STEP_SUMMARY
+          echo "|-----------|----------|-------------|---------------|" >> $GITHUB_STEP_SUMMARY
+          python -c "
+          import json
+          data = json.load(open('embedding_benchmark.json'))
+          for size, metrics in data.items():
+              print(f\"| {size} | {metrics['avg_time_ms']}ms | {metrics['text_length']} chars | {metrics['embedding_dim']} |\")
+          " >> $GITHUB_STEP_SUMMARY
+
+      - name: Upload embedding benchmark
+        uses: actions/upload-artifact@v4
+        with:
+          name: embedding-benchmark-results
+          path: embedding_benchmark.json
+
+  benchmark-chromadb:
+    name: ChromaDB Operations Performance
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Benchmark ChromaDB operations
+        run: |
+          python << 'EOF' > chromadb_benchmark.json
+import json
+import time
+import chromadb
+from sentence_transformers import SentenceTransformer
+
+# Setup
+client = chromadb.Client()
+collection = client.create_collection("benchmark_test")
+model = SentenceTransformer('all-MiniLM-L6-v2')
+
+# Benchmark data
+test_docs = [f"Document {i}: This is test content about Manus AI agent. " * 10 for i in range(100)]
+test_embeddings = model.encode(test_docs).tolist()
+
+results = {}
+
+# Benchmark: Add documents
+start = time.time()
+collection.add(
+    ids=[f"doc_{i}" for i in range(100)],
+    embeddings=test_embeddings,
+    documents=test_docs
+)
+add_time = (time.time() - start) * 1000
+results["add_100_docs_ms"] = round(add_time, 2)
+
+# Benchmark: Single query
+query_text = "Tell me about Manus AI agent"
+query_embedding = model.encode(query_text).tolist()
+
+start = time.time()
+result = collection.query(query_embeddings=[query_embedding], n_results=5)
+single_query_time = (time.time() - start) * 1000
+results["single_query_ms"] = round(single_query_time, 2)
+
+# Benchmark: Multiple queries
+query_times = []
+for _ in range(10):
+    start = time.time()
+    collection.query(query_embeddings=[query_embedding], n_results=5)
+    query_times.append((time.time() - start) * 1000)
+
+results["avg_query_ms"] = round(sum(query_times) / len(query_times), 2)
+results["p95_query_ms"] = round(sorted(query_times)[int(len(query_times) * 0.95)], 2)
+
+# Benchmark: Get by ID
+start = time.time()
+collection.get(ids=["doc_0", "doc_1", "doc_2"])
+get_time = (time.time() - start) * 1000
+results["get_by_id_ms"] = round(get_time, 2)
+
+with open("chromadb_benchmark.json", "w") as f:
+    json.dump(results, f, indent=2)
+
+print(json.dumps(results, indent=2))
+EOF
+
+      - name: Display ChromaDB results
+        run: |
+          echo "### 💾 ChromaDB Performance" >> $GITHUB_STEP_SUMMARY
+          python -c "
+          import json
+          data = json.load(open('chromadb_benchmark.json'))
+          
+          print('**Operation Latencies:**')
+          for op, latency in data.items():
+              op_name = op.replace('_', ' ').title()
+              print(f'- {op_name}: {latency}ms')
+          " >> $GITHUB_STEP_SUMMARY
+
+      - name: Upload ChromaDB benchmark
+        uses: actions/upload-artifact@v4
+        with:
+          name: chromadb-benchmark-results
+          path: chromadb_benchmark.json
+
+  benchmark-history:
+    name: Store Benchmark History
+    runs-on: ubuntu-latest
+    needs: [benchmark-rag, benchmark-embeddings, benchmark-chromadb]
+    if: github.ref == 'refs/heads/main'
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Download all benchmark results
+        uses: actions/download-artifact@v4
+        with:
+          path: benchmarks/
+
+      - name: Commit benchmark history
+        run: |
+          # Create benchmark history directory
+          mkdir -p .benchmark-history
+          
+          # Copy results with timestamp
+          TIMESTAMP=$(date +%Y%m%d_%H%M%S)
+          mkdir -p .benchmark-history/$TIMESTAMP
+          cp -r benchmarks/* .benchmark-history/$TIMESTAMP/ || true
+          
+          # Create summary file
+          cat > .benchmark-history/$TIMESTAMP/summary.txt << EOF
+Benchmark Run: $TIMESTAMP
+Commit: ${{ github.sha }}
+Branch: ${{ github.ref_name }}
+Trigger: ${{ github.event_name }}
+EOF
+          
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git add .benchmark-history/$TIMESTAMP/
+          git commit -m "📊 Add benchmark results for $TIMESTAMP" || echo "No changes to commit"
+
+      - name: Push benchmark history
+        uses: ad-m/github-push-action@master
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          branch: ${{ github.ref }}

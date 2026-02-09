@@ -1,0 +1,33 @@
+{
+  "Manus": {
+    "name": "Manus",
+    "official_name": "Manus AI",
+    "address": "109 North Bridge Road, Singapore, 179097",
+    "phone": null,
+    "email": "contact@manus.im",
+    "website": "https://manus.im",
+    "entity_type": "General AI agent",
+    "founded": "2022",
+    "description": "General AI agent that leverages its autonomous capabilities to bridge minds and actions. It is a general AI agent that bridges minds and actions, managing various tasks in work and life by turning thoughts into actions. It increases productivity and efficiency by automating tasks, with its autonomous capabilities. It can perform a range of tasks, browsing websites, data analytics, task mamagement, research management, supplier sourcing and more.",
+    "verified_sources": [
+      "https://manus.im/",
+      "https://tracxn.com/d/companies/manus/__65etXlb4ZiESp8cldWogBwWkBwh7VyRNj3yXQFKBEXs",
+      "https://manus.im/blog/manus-joins-meta-for-next-era-of-innovation"
+    ]
+  },
+  "Example_Brand": {
+    "name": "Example Brand",
+    "official_name": "Example Brand Pte Ltd",
+    "address": "10 Anson Road, #10-11 International Plaza, Singapore 079903",
+    "phone": "+65 6123 4567",
+    "email": "contact@example.com",
+    "website": "https://example.com",
+    "entity_type": "Private Limited Company",
+    "founded": "2020",
+    "description": "Example company for testing",
+    "verified_sources": [
+      "https://example.com/",
+      "https://example.com/about"
+    ]
+  }
+}

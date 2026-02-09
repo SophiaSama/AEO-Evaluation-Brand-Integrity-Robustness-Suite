@@ -1,0 +1,496 @@
+name: BIRS Code Quality
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main]
+  schedule:
+    # Run weekly on Monday at 6 AM UTC
+    - cron: '0 6 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+  checks: write
+
+jobs:
+  code-coverage:
+    name: Code Coverage Analysis
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pytest pytest-cov coverage
+
+      - name: Run tests with coverage
+        run: |
+          pytest tests/ \
+            --cov=src \
+            --cov-report=term-missing \
+            --cov-report=json \
+            --cov-report=html \
+            --cov-report=xml \
+            -v \
+            -m "not integration and not e2e"
+
+      - name: Generate coverage badge
+        run: |
+          python << 'EOF'
+import json
+
+with open('coverage.json') as f:
+    data = json.load(f)
+    coverage = data['totals']['percent_covered']
+    
+    # Determine color
+    if coverage >= 80:
+        color = 'brightgreen'
+    elif coverage >= 60:
+        color = 'yellow'
+    elif coverage >= 40:
+        color = 'orange'
+    else:
+        color = 'red'
+    
+    print(f"Coverage: {coverage:.1f}%")
+    print(f"Color: {color}")
+    
+    # Create simple badge data
+    with open('coverage-badge.json', 'w') as out:
+        json.dump({
+            'schemaVersion': 1,
+            'label': 'coverage',
+            'message': f'{coverage:.1f}%',
+            'color': color
+        }, out)
+EOF
+
+      - name: Display coverage summary
+        run: |
+          echo "### 📊 Code Coverage Report" >> $GITHUB_STEP_SUMMARY
+          python -c "
+          import json
+          
+          with open('coverage.json') as f:
+              data = json.load(f)
+          
+          totals = data['totals']
+          print(f\"**Overall Coverage:** {totals['percent_covered']:.1f}%\")
+          print(f\"**Lines Covered:** {totals['covered_lines']}/{totals['num_statements']}\")
+          print('')
+          print('**File Coverage:**')
+          print('')
+          print('| File | Coverage | Lines |')
+          print('|------|----------|-------|')
+          
+          for file, info in sorted(data['files'].items()):
+              if 'src/' in file:
+                  filename = file.split('src/')[-1]
+                  coverage = info['summary']['percent_covered']
+                  lines = f\"{info['summary']['covered_lines']}/{info['summary']['num_statements']}\"
+                  print(f'| {filename} | {coverage:.1f}% | {lines} |')
+          " >> $GITHUB_STEP_SUMMARY
+
+      - name: Upload coverage reports
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-reports
+          path: |
+            coverage.json
+            coverage.xml
+            htmlcov/
+            coverage-badge.json
+
+      - name: Comment coverage on PR
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const coverage = JSON.parse(fs.readFileSync('coverage.json', 'utf8'));
+            const percent = coverage.totals.percent_covered.toFixed(1);
+            
+            const comment = `## 📊 Code Coverage Report
+            
+            **Overall Coverage:** ${percent}%
+            
+            | Metric | Value |
+            |--------|-------|
+            | Lines Covered | ${coverage.totals.covered_lines}/${coverage.totals.num_statements} |
+            | Branches Covered | ${coverage.totals.covered_branches}/${coverage.totals.num_branches} |
+            | Missing Lines | ${coverage.totals.missing_lines} |
+            
+            <details>
+            <summary>📁 File Coverage</summary>
+            
+            | File | Coverage |
+            |------|----------|
+            ${Object.entries(coverage.files)
+              .filter(([file]) => file.includes('src/'))
+              .map(([file, info]) => {
+                const filename = file.split('src/')[1];
+                const percent = info.summary.percent_covered.toFixed(1);
+                return `| ${filename} | ${percent}% |`;
+              })
+              .join('\n')}
+            
+            </details>
+            `;
+            
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: comment
+            });
+
+  complexity-analysis:
+    name: Code Complexity Analysis
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install complexity tools
+        run: |
+          python -m pip install --upgrade pip
+          pip install radon xenon mccabe
+
+      - name: Analyze cyclomatic complexity
+        run: |
+          radon cc src/ -a -s -j > complexity.json || true
+          
+          echo "### 🔄 Cyclomatic Complexity" >> $GITHUB_STEP_SUMMARY
+          python -c "
+          import json
+          from pathlib import Path
+          
+          if Path('complexity.json').exists():
+              data = json.load(open('complexity.json'))
+              
+              # Collect all functions
+              all_funcs = []
+              for file, blocks in data.items():
+                  for block in blocks:
+                      all_funcs.append({
+                          'file': file,
+                          'name': block.get('name', 'unknown'),
+                          'complexity': block.get('complexity', 0),
+                          'rank': block.get('rank', 'A')
+                      })
+              
+              # Sort by complexity
+              all_funcs.sort(key=lambda x: x['complexity'], reverse=True)
+              
+              if all_funcs:
+                  print('**Most Complex Functions:**')
+                  print('')
+                  print('| Function | File | Complexity | Rank |')
+                  print('|----------|------|------------|------|')
+                  
+                  for func in all_funcs[:10]:
+                      filename = func['file'].split('/')[-1]
+                      print(f\"| {func['name']} | {filename} | {func['complexity']} | {func['rank']} |\")
+                  
+                  # Show high complexity warnings
+                  high_complexity = [f for f in all_funcs if f['complexity'] > 10]
+                  if high_complexity:
+                      print('')
+                      print(f\"⚠️ Found {len(high_complexity)} functions with complexity > 10\")
+              else:
+                  print('✓ No complex functions detected')
+          else:
+              print('⚠️ Could not generate complexity report')
+          " >> $GITHUB_STEP_SUMMARY
+
+      - name: Check complexity thresholds
+        run: |
+          xenon src/ --max-absolute B --max-modules B --max-average A || echo "⚠️ Complexity thresholds exceeded"
+
+      - name: Upload complexity report
+        uses: actions/upload-artifact@v4
+        with:
+          name: complexity-report
+          path: complexity.json
+
+  maintainability-index:
+    name: Maintainability Index
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install radon
+        run: |
+          python -m pip install --upgrade pip
+          pip install radon
+
+      - name: Calculate maintainability index
+        run: |
+          radon mi src/ -j > maintainability.json || true
+          
+          echo "### 🛠️ Maintainability Index" >> $GITHUB_STEP_SUMMARY
+          python -c "
+          import json
+          from pathlib import Path
+          
+          if Path('maintainability.json').exists():
+              data = json.load(open('maintainability.json'))
+              
+              scores = []
+              print('| File | MI Score | Rank |')
+              print('|------|----------|------|')
+              
+              for file, info in sorted(data.items()):
+                  filename = file.split('/')[-1]
+                  mi = info.get('mi', 0)
+                  rank = info.get('rank', 'C')
+                  scores.append(mi)
+                  
+                  # Add emoji based on rank
+                  emoji = {'A': '🟢', 'B': '🟡', 'C': '🟠'}.get(rank, '🔴')
+                  print(f'| {filename} | {mi:.1f} {emoji} | {rank} |')
+              
+              if scores:
+                  avg_mi = sum(scores) / len(scores)
+                  print('')
+                  print(f'**Average MI:** {avg_mi:.1f}')
+                  print('')
+                  print('MI Scale: A (>20) = High, B (10-20) = Medium, C (<10) = Low maintainability')
+          else:
+              print('⚠️ Could not generate maintainability report')
+          " >> $GITHUB_STEP_SUMMARY
+
+      - name: Upload maintainability report
+        uses: actions/upload-artifact@v4
+        with:
+          name: maintainability-report
+          path: maintainability.json
+
+  code-duplication:
+    name: Code Duplication Detection
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install duplication detector
+        run: |
+          python -m pip install --upgrade pip
+          pip install pylint
+
+      - name: Detect code duplication
+        run: |
+          pylint src/ \
+            --disable=all \
+            --enable=duplicate-code \
+            --output-format=json \
+            > duplication.json || true
+          
+          echo "### 🔁 Code Duplication" >> $GITHUB_STEP_SUMMARY
+          python -c "
+          import json
+          from pathlib import Path
+          
+          if Path('duplication.json').exists() and Path('duplication.json').stat().st_size > 0:
+              data = json.load(open('duplication.json'))
+              
+              duplications = [msg for msg in data if msg.get('message-id') == 'R0801']
+              
+              if duplications:
+                  print(f'⚠️ Found {len(duplications)} duplicate code blocks')
+                  print('')
+                  for dup in duplications[:5]:
+                      print(f\"- {dup.get('message', 'Unknown duplication')}\")
+                  
+                  if len(duplications) > 5:
+                      print(f'  ...and {len(duplications) - 5} more')
+              else:
+                  print('✓ No significant code duplication detected')
+          else:
+              print('✓ No code duplication detected')
+          " >> $GITHUB_STEP_SUMMARY
+
+      - name: Upload duplication report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: duplication-report
+          path: duplication.json
+
+  tech-debt:
+    name: Technical Debt Estimation
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Calculate tech debt
+        run: |
+          python << 'EOF' > tech_debt.json
+import json
+import re
+from pathlib import Path
+
+def analyze_file(file_path):
+    """Analyze a Python file for technical debt indicators."""
+    content = Path(file_path).read_text()
+    
+    indicators = {
+        'todos': len(re.findall(r'#\s*TODO', content, re.IGNORECASE)),
+        'fixmes': len(re.findall(r'#\s*FIXME', content, re.IGNORECASE)),
+        'hacks': len(re.findall(r'#\s*HACK', content, re.IGNORECASE)),
+        'warnings': len(re.findall(r'#\s*WARNING', content, re.IGNORECASE)),
+        'deprecated': len(re.findall(r'@deprecated|#\s*DEPRECATED', content, re.IGNORECASE)),
+        'long_functions': len(re.findall(r'def\s+\w+\([^)]*\):[^\n]*\n(    .*\n){30,}', content)),
+        'long_lines': len([line for line in content.split('\n') if len(line) > 120])
+    }
+    
+    return indicators
+
+# Analyze all Python files
+all_indicators = {}
+totals = {
+    'todos': 0,
+    'fixmes': 0,
+    'hacks': 0,
+    'warnings': 0,
+    'deprecated': 0,
+    'long_functions': 0,
+    'long_lines': 0
+}
+
+for py_file in Path('src/').glob('*.py'):
+    if py_file.name.startswith('_'):
+        continue
+    
+    indicators = analyze_file(py_file)
+    all_indicators[str(py_file)] = indicators
+    
+    for key in totals:
+        totals[key] += indicators[key]
+
+# Calculate debt score (higher = more debt)
+debt_score = (
+    totals['todos'] * 1 +
+    totals['fixmes'] * 2 +
+    totals['hacks'] * 3 +
+    totals['warnings'] * 2 +
+    totals['deprecated'] * 3 +
+    totals['long_functions'] * 5 +
+    totals['long_lines'] * 0.1
+)
+
+result = {
+    'totals': totals,
+    'debt_score': round(debt_score, 2),
+    'files': all_indicators
+}
+
+with open('tech_debt.json', 'w') as f:
+    json.dump(result, f, indent=2)
+
+print(json.dumps(result, indent=2))
+EOF
+
+      - name: Display tech debt summary
+        run: |
+          echo "### 💳 Technical Debt Analysis" >> $GITHUB_STEP_SUMMARY
+          python -c "
+          import json
+          
+          data = json.load(open('tech_debt.json'))
+          totals = data['totals']
+          
+          print(f\"**Debt Score:** {data['debt_score']}\")
+          print('')
+          print('**Indicators:**')
+          print(f\"- TODO comments: {totals['todos']}\")
+          print(f\"- FIXME comments: {totals['fixmes']}\")
+          print(f\"- HACK comments: {totals['hacks']}\")
+          print(f\"- WARNING comments: {totals['warnings']}\")
+          print(f\"- Deprecated code: {totals['deprecated']}\")
+          print(f\"- Long functions (>30 lines): {totals['long_functions']}\")
+          print(f\"- Long lines (>120 chars): {totals['long_lines']}\")
+          print('')
+          
+          if data['debt_score'] < 50:
+              print('✅ Low technical debt')
+          elif data['debt_score'] < 100:
+              print('⚠️ Moderate technical debt')
+          else:
+              print('🔴 High technical debt - consider refactoring')
+          " >> $GITHUB_STEP_SUMMARY
+
+      - name: Upload tech debt report
+        uses: actions/upload-artifact@v4
+        with:
+          name: tech-debt-report
+          path: tech_debt.json
+
+  quality-summary:
+    name: Quality Metrics Summary
+    runs-on: ubuntu-latest
+    needs: [code-coverage, complexity-analysis, maintainability-index, code-duplication, tech-debt]
+    if: always()
+    
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: quality-reports/
+
+      - name: Generate quality dashboard
+        run: |
+          echo "## 📈 Code Quality Dashboard" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Report Generated:** $(date -u +"%Y-%m-%d %H:%M UTC")" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Jobs Status" >> $GITHUB_STEP_SUMMARY
+          echo "- Coverage: ${{ needs.code-coverage.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Complexity: ${{ needs.complexity-analysis.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Maintainability: ${{ needs.maintainability-index.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Duplication: ${{ needs.code-duplication.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Tech Debt: ${{ needs.tech-debt.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "📊 View detailed reports in workflow artifacts." >> $GITHUB_STEP_SUMMARY

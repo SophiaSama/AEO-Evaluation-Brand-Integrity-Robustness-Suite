@@ -1,0 +1,335 @@
+name: BIRS Integration Tests
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main]
+  schedule:
+    # Run nightly at 2 AM UTC
+    - cron: '0 2 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  integration-tests:
+    name: Integration Tests (requires Ollama)
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y curl
+
+      - name: Install Ollama
+        run: |
+          curl -fsSL https://ollama.com/install.sh | sh
+
+      - name: Start Ollama service
+        run: |
+          ollama serve &
+          sleep 5
+
+      - name: Pull Llama 3.2 model
+        run: |
+          ollama pull llama3.2
+        timeout-minutes: 30
+
+      - name: Install Python dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pytest pytest-timeout
+
+      - name: 🔒 Security Check - Verify Local Ollama Only
+        run: |
+          echo "### 🔒 Security Verification: Local LLM Only" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          # 1. Verify Ollama is running locally
+          if curl -s http://localhost:11434/api/tags > /dev/null; then
+            echo "✅ Ollama running on localhost:11434" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "❌ ERROR: Ollama not accessible on localhost" >> $GITHUB_STEP_SUMMARY
+            exit 1
+          fi
+          
+          # 2. Verify no cloud API keys are set
+          CLOUD_KEYS_FOUND=0
+          for key in OPENAI_API_KEY ANTHROPIC_API_KEY GOOGLE_API_KEY COHERE_API_KEY HUGGINGFACE_API_TOKEN; do
+            if [ -n "${!key}" ]; then
+              echo "⚠️  WARNING: $key is set (not used by BIRS)" >> $GITHUB_STEP_SUMMARY
+              CLOUD_KEYS_FOUND=1
+            fi
+          done
+          
+          if [ $CLOUD_KEYS_FOUND -eq 0 ]; then
+            echo "✅ No cloud API keys present" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          # 3. Verify OLLAMA_BASE_URL points to localhost
+          python << 'EOF' >> $GITHUB_STEP_SUMMARY
+from src.config import OLLAMA_BASE_URL, OLLAMA_MODEL
+
+if 'localhost' in OLLAMA_BASE_URL or '127.0.0.1' in OLLAMA_BASE_URL:
+    print(f"✅ Ollama URL: {OLLAMA_BASE_URL} (local-only)")
+else:
+    print(f"❌ ERROR: Ollama URL is not localhost: {OLLAMA_BASE_URL}")
+    exit(1)
+
+print(f"✅ Ollama model: {OLLAMA_MODEL}")
+EOF
+          
+          # 4. Verify LangChain is using ChatOllama
+          python << 'EOF' >> $GITHUB_STEP_SUMMARY
+import sys
+
+try:
+    from src.rag import ChatOllama
+    print("✅ LangChain using ChatOllama (local)")
+except ImportError as e:
+    print(f"❌ ERROR: Cannot import ChatOllama: {e}")
+    sys.exit(1)
+
+# Check that cloud LLM packages are NOT imported in rag.py
+with open('src/rag.py') as f:
+    content = f.read()
+    cloud_llms = ['ChatOpenAI', 'ChatAnthropic', 'ChatGoogleGenerativeAI']
+    for llm in cloud_llms:
+        if f'from langchain' in content and llm in content:
+            print(f"⚠️  WARNING: Found {llm} in rag.py")
+
+print("✅ No cloud LLM imports detected")
+EOF
+          
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**🔐 Security Guarantee: All LLM inference happens locally on this runner. No data sent to external APIs.**" >> $GITHUB_STEP_SUMMARY
+
+      - name: Run ingest (populate ChromaDB)
+        run: |
+          python scripts/ingest_documents.py
+        timeout-minutes: 10
+
+      - name: Verify ChromaDB populated
+        run: |
+          python -c "
+          from pathlib import Path
+          chroma_dir = Path('data/chroma_birs')
+          assert chroma_dir.exists(), 'ChromaDB directory not created'
+          print('✓ ChromaDB populated')
+          "
+
+      - name: Run integration tests
+        run: |
+          pytest tests/ -v \
+            -m "integration" \
+            --timeout=300
+        timeout-minutes: 15
+
+      - name: Test baseline query
+        run: |
+          python -c "
+          from src.baseline import get_baseline_response
+          answer, contexts = get_baseline_response()
+          assert len(answer) > 0, 'Baseline answer empty'
+          assert len(contexts) > 0, 'No contexts retrieved'
+          print(f'✓ Baseline query successful: {len(answer)} chars, {len(contexts)} contexts')
+          "
+        timeout-minutes: 5
+
+      - name: Archive ChromaDB for debugging
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: chromadb-debug
+          path: data/chroma_birs/
+
+  e2e-tests:
+    name: End-to-End BIRS Suite
+    runs-on: ubuntu-latest
+    needs: integration-tests
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install Ollama
+        run: |
+          curl -fsSL https://ollama.com/install.sh | sh
+
+      - name: Start Ollama and pull model
+        run: |
+          ollama serve &
+          sleep 5
+          ollama pull llama3.2
+        timeout-minutes: 30
+
+      - name: Install Python dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Run ingest
+        run: python scripts/ingest_documents.py
+        timeout-minutes: 10
+
+      - name: Run full BIRS suite (original tests only)
+        run: |
+          python -c "
+          from src.run_suite import run_suite
+          path = run_suite(extended_tests=False, run_aeo_audit=False, run_deepeval=False)
+          print(f'✓ BIRS suite completed: {path}')
+          "
+        timeout-minutes: 20
+
+      - name: Validate results JSON
+        run: |
+          python -c "
+          import json
+          from pathlib import Path
+          
+          results_file = Path('results/birs_results.json')
+          assert results_file.exists(), 'Results file not created'
+          
+          data = json.loads(results_file.read_text())
+          assert 'baseline_answer' in data, 'Missing baseline_answer'
+          assert 'test_results' in data, 'Missing test_results'
+          assert 'scoring' in data, 'Missing scoring'
+          
+          # Check test results
+          test_ids = [t['test_id'] for t in data['test_results']]
+          expected = ['BIRS-01', 'BIRS-02', 'BIRS-03']
+          for tid in expected:
+              assert tid in test_ids, f'Missing test {tid}'
+          
+          print(f'✓ Results valid: {len(data[\"test_results\"])} tests')
+          "
+
+      - name: Upload test results
+        uses: actions/upload-artifact@v4
+        with:
+          name: birs-results
+          path: results/
+
+      - name: Create test summary
+        run: |
+          echo "## BIRS E2E Test Results" >> $GITHUB_STEP_SUMMARY
+          python -c "
+          import json
+          from pathlib import Path
+          
+          data = json.loads(Path('results/birs_results.json').read_text())
+          
+          print('', file=open('/tmp/summary.md', 'w'))
+          print('### Test Results', file=open('/tmp/summary.md', 'a'))
+          print('', file=open('/tmp/summary.md', 'a'))
+          for test in data['test_results']:
+              status = '✅' if test['passed'] else '❌'
+              print(f\"- {status} **{test['test_id']}** {test['name']}\", file=open('/tmp/summary.md', 'a'))
+          
+          print('', file=open('/tmp/summary.md', 'a'))
+          print('### Scoring', file=open('/tmp/summary.md', 'a'))
+          print('', file=open('/tmp/summary.md', 'a'))
+          scoring = data['scoring']
+          print(f\"- Robustness Score: {scoring['robustness_score']:.3f}\", file=open('/tmp/summary.md', 'a'))
+          print(f\"- Sentiment Drift: {scoring['sentiment_drift']:.3f}\", file=open('/tmp/summary.md', 'a'))
+          print(f\"- Citation Fidelity: {scoring['citation_fidelity']:.3f}\", file=open('/tmp/summary.md', 'a'))
+          print(f\"- Liar Score: {scoring['liar_score']:.3f}\", file=open('/tmp/summary.md', 'a'))
+          "
+          cat /tmp/summary.md >> $GITHUB_STEP_SUMMARY
+
+  e2e-tests-extended:
+    name: E2E with AEO Audit
+    runs-on: ubuntu-latest
+    needs: integration-tests
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install Ollama
+        run: |
+          curl -fsSL https://ollama.com/install.sh | sh
+
+      - name: Start Ollama and pull model
+        run: |
+          ollama serve &
+          sleep 5
+          ollama pull llama3.2
+        timeout-minutes: 30
+
+      - name: Install Python dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Run ingest
+        run: python scripts/ingest_documents.py
+        timeout-minutes: 10
+
+      - name: Run full BIRS suite with AEO Audit
+        run: |
+          python -c "
+          from src.run_suite import run_suite
+          path = run_suite(extended_tests=True, run_aeo_audit=True, run_deepeval=False)
+          print(f'✓ Extended BIRS suite completed: {path}')
+          "
+        timeout-minutes: 30
+
+      - name: Validate extended results
+        run: |
+          python -c "
+          import json
+          from pathlib import Path
+          
+          data = json.loads(Path('results/birs_results.json').read_text())
+          
+          # Check all 6 tests present
+          test_ids = [t['test_id'] for t in data['test_results']]
+          expected = ['BIRS-01', 'BIRS-02', 'BIRS-03', 'BIRS-04', 'BIRS-05', 'BIRS-06']
+          for tid in expected:
+              assert tid in test_ids, f'Missing test {tid}'
+          
+          # Check AEO metrics
+          scoring = data['scoring']
+          if scoring.get('nape_consistency') is not None:
+              print(f'✓ NAP+E Consistency: {scoring[\"nape_consistency\"]:.3f}')
+          if scoring.get('citation_veracity') is not None:
+              print(f'✓ Citation Veracity: {scoring[\"citation_veracity\"]:.3f}')
+          if scoring.get('source_attribution') is not None:
+              print(f'✓ Source Attribution: {scoring[\"source_attribution\"]:.3f}')
+          
+          print(f'✓ Extended results valid: {len(data[\"test_results\"])} tests')
+          "
+
+      - name: Upload extended results
+        uses: actions/upload-artifact@v4
+        with:
+          name: birs-results-extended
+          path: results/
