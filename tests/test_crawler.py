@@ -1,10 +1,11 @@
 """Tests for crawler (unit only; no network)."""
 
-from pathlib import Path
 import tempfile
+from pathlib import Path
 
 import pytest
-from src.crawler import slug_from_url, MANUS_SEED_URLS
+
+from src.crawler import MANUS_SEED_URLS, slug_from_url
 
 
 def test_slug_from_url():

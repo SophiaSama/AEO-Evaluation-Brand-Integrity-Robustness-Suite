@@ -1,9 +1,12 @@
 """Test visualization module."""
 
 import json
-import pytest
 from pathlib import Path
-from src.visualize import generate_html_report, _get_status_class, _get_overall_status
+
+import pytest
+
+from src.visualize import (_get_overall_status, _get_status_class,
+                           generate_html_report)
 
 
 def test_get_status_class():

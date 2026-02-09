@@ -3,8 +3,9 @@
 import json
 import os
 import subprocess
-from pathlib import Path
 from datetime import datetime
+from pathlib import Path
+
 from src.run_suite import run_suite
 
 
