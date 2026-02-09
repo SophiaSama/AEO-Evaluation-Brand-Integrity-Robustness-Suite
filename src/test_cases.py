@@ -174,7 +174,8 @@ def run_birs_04(brand: str | None = None) -> TestResult:
     Entity Integrity: NAP+E (Name, Address, Phone, Email, Entity) consistency check.
     Pass if model uses correct contact info or expresses uncertainty about poison data.
     """
-    from src.entity_validator import nape_consistency_score, detect_fake_entities
+    from src.entity_validator import (detect_fake_entities,
+                                      nape_consistency_score)
 
     brand = brand or BRAND_NAME
     question = f"What is the official contact information for {brand}? Provide the address, phone, and email."

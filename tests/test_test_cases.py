@@ -1,12 +1,9 @@
 """Unit tests for test case logic (BIRS-01/02/03) using mock answers."""
 
 import pytest
-from src.test_cases import (
-    CONFLICT_PHRASES,
-    LIAR_PHRASES,
-    NO_LEAK_PHRASES,
-    HALLUCINATED_NUMBER,
-)
+
+from src.test_cases import (CONFLICT_PHRASES, HALLUCINATED_NUMBER,
+                            LIAR_PHRASES, NO_LEAK_PHRASES)
 
 
 def test_liar_phrases_match():

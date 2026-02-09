@@ -10,12 +10,12 @@ Usage:
 """
 
 import argparse
+import os
 import subprocess
 import sys
-import os
-from pathlib import Path
-from concurrent.futures import ThreadPoolExecutor, as_completed
 import time
+from concurrent.futures import ThreadPoolExecutor, as_completed
+from pathlib import Path
 
 # Fix Unicode support on Windows
 if sys.platform == "win32":

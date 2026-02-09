@@ -5,9 +5,9 @@ Uses Plotly for interactive visualizations (no external dependencies).
 """
 
 import json
+from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List
-from datetime import datetime
 
 
 def generate_html_report(

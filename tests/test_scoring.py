@@ -1,14 +1,10 @@
 """Unit tests for scoring: sentiment, citation fidelity, Liar Score."""
 
 import pytest
-from src.scoring import (
-    citation_fidelity,
-    get_sentiment,
-    liar_score_from_answer,
-    robustness_score,
-    sentiment_drift,
-    ScoringResult,
-)
+
+from src.scoring import (ScoringResult, citation_fidelity, get_sentiment,
+                         liar_score_from_answer, robustness_score,
+                         sentiment_drift)
 
 
 def test_get_sentiment():
