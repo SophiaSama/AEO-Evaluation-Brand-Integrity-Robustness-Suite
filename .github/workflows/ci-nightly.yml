@@ -78,48 +78,7 @@ jobs:
 
       - name: Run full BIRS suite with extended tests
         run: |
-          python << 'PYTHON_SCRIPT' > extended_results.json
-import json
-from src.run_suite import run_suite
-
-# Run with all extended tests enabled
-results_path = run_suite(
-    extended_tests=True,
-    run_aeo_audit=True,
-    run_deepeval=False  # Don't require API key for nightly
-)
-
-print(f'Results saved to: {results_path}')
-
-# Load and summarize results
-with open(results_path) as f:
-    data = json.load(f)
-
-summary = {
-    'total_tests': len([k for k in data.keys() if k.startswith('birs_')]),
-    'baseline_answer_length': len(data.get('baseline_answer', '')),
-    'contexts_count': len(data.get('contexts', [])),
-    'extended_tests_completed': True
-}
-
-# Check test results
-test_results = {}
-for key in data.keys():
-    if key.startswith('birs_'):
-        test_results[key] = {
-            'pass': data[key].get('pass', False),
-            'score': data[key].get('score', 0)
-        }
-
-summary['test_results'] = test_results
-summary['passing_tests'] = sum(1 for t in test_results.values() if t['pass'])
-summary['avg_score'] = sum(t['score'] for t in test_results.values()) / len(test_results) if test_results else 0
-
-with open('extended_results.json', 'w') as f:
-    json.dump(summary, f, indent=2)
-
-print(json.dumps(summary, indent=2))
-PYTHON_SCRIPT
+          python scripts/nightly_extended_results.py > extended_results.json
         timeout-minutes: 30
 
       - name: Display extended test results
@@ -140,38 +99,7 @@ PYTHON_SCRIPT
           " >> $GITHUB_STEP_SUMMARY
 
       - name: Check for regressions
-        run: |
-          python << 'EOF'
-import json
-
-data = json.load(open('extended_results.json'))
-
-# Define minimum acceptable scores
-MIN_ACCEPTABLE_SCORES = {
-    "birs_01": 0.5,  # Grounding
-    "birs_02": 0.5,  # Consistency
-    "birs_03": 0.5,  # Robustness
-    "birs_04": 0.6,  # Entity integrity
-    "birs_05": 0.6,  # Citation veracity
-    "birs_06": 0.6,  # Source attribution
-}
-
-regressions = []
-for test_name, result in data['test_results'].items():
-    min_score = MIN_ACCEPTABLE_SCORES.get(test_name, 0.5)
-    if result['score'] < min_score:
-        regressions.append(f"{test_name}: {result['score']:.2f} < {min_score}")
-
-if regressions:
-    print("⚠️ Performance regressions detected:")
-    for reg in regressions:
-        print(f"  - {reg}")
-    
-    # Create issue if regressions found
-    print("\n::warning::Performance regressions detected in nightly tests")
-else:
-    print("✓ No regressions detected")
-EOF
+        run: python scripts/nightly_check_regressions.py
 
       - name: Upload extended test results
         uses: actions/upload-artifact@v4
@@ -222,61 +150,10 @@ EOF
       - name: Run ingest
         run: python scripts/ingest_documents.py
 
-      - name: Test with multiple models
-        run: |
-          python << 'EOF' > multi_model_results.json
-import json
-import os
-from src.run_suite import run_suite
-
-models = ["llama3.2", "mistral", "phi3"]
-all_results = {}
-
-for model in models:
-    print(f"\n{'='*60}")
-    print(f"Testing with model: {model}")
-    print('='*60)
-    
-    # Set environment variable for model selection
-    os.environ['OLLAMA_MODEL'] = model
-    
-    try:
-        results_path = run_suite(
-            extended_tests=True,
-            run_aeo_audit=True,
-            run_deepeval=False
-        )
-        
-        with open(results_path) as f:
-            data = json.load(f)
-        
-        # Extract key metrics
-        model_results = {
-            "baseline_answer": data.get("baseline_answer", ""),
-            "tests": {}
-        }
-        
-        for key in data.keys():
-            if key.startswith("birs_"):
-                model_results["tests"][key] = {
-                    "pass": data[key].get("pass", False),
-                    "score": data[key].get("score", 0)
-                }
-        
-        all_results[model] = model_results
-        
-    except Exception as e:
-        print(f"Error testing {model}: {e}")
-        all_results[model] = {"error": str(e)}
-
-# Save comparison
-with open("multi_model_results.json", "w") as f:
-    json.dump(all_results, f, indent=2)
-
-print("\n" + "="*60)
-print("Multi-Model Comparison Complete")
-print("="*60)
-EOF
+      - name: Run multi-model tests
+        if: ${{ github.event.inputs.run_multi_model || false }}
+        run: python scripts/nightly_multi_model.py > multi_model_results.json
+        timeout-minutes: 30
 
       - name: Display model comparison
         run: |
