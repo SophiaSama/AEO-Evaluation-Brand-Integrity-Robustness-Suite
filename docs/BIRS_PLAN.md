@@ -223,14 +223,3 @@ AEO_Evaluation/
 - [ ] README: ethics note (no public LLM injection), setup (Ollama, ChromaDB, LangChain), how to run baseline, ingest, reset, and full suite.
 
 ---
-
-## 11. Next Step: Design Review
-
-Before implementation, please confirm:
-
-1. **Brand name:** Placeholder "Brand X" or a specific fictitious name (e.g. "MumAI")?
-2. **BIRS-02 (Authority):** Retrieval-time weighting by metadata (e.g. boost "press_release") or two separate retrievals?
-3. **DeepEval:** Required in v1 or optional (skip if no API key / for full local-only)?
-4. **Output:** JSON only, or also Markdown/HTML report?
-
-Once confirmed, we proceed to **implementation** and then **testing**.
