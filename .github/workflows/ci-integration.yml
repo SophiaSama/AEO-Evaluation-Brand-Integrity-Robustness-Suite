@@ -84,41 +84,8 @@ jobs:
           fi
           
           # 3. Verify OLLAMA_BASE_URL points to localhost
-          python << 'PYTHON_SCRIPT' >> $GITHUB_STEP_SUMMARY
-from src.config import OLLAMA_BASE_URL, OLLAMA_MODEL
+          python scripts/verify_local_llm_security.py >> $GITHUB_STEP_SUMMARY
 
-if 'localhost' in OLLAMA_BASE_URL or '127.0.0.1' in OLLAMA_BASE_URL:
-    print(f'✅ Ollama URL: {OLLAMA_BASE_URL} (local-only)')
-else:
-    print(f'❌ ERROR: Ollama URL is not localhost: {OLLAMA_BASE_URL}')
-    exit(1)
-
-print(f'✅ Ollama model: {OLLAMA_MODEL}')
-PYTHON_SCRIPT
-          
-          # 4. Verify LangChain is using ChatOllama
-          python << 'PYTHON_SCRIPT' >> $GITHUB_STEP_SUMMARY
-import sys
-
-try:
-    from src.rag import ChatOllama
-    print('✅ LangChain using ChatOllama (local)')
-except ImportError as e:
-    print(f'❌ ERROR: Cannot import ChatOllama: {e}')
-    sys.exit(1)
-
-# Check that cloud LLM packages are NOT imported in rag.py
-with open('src/rag.py') as f:
-    content = f.read()
-    cloud_llms = ['ChatOpenAI', 'ChatAnthropic', 'ChatGoogleGenerativeAI']
-    for llm in cloud_llms:
-        if f'from langchain' in content and llm in content:
-            print(f'⚠️  WARNING: Found {llm} in rag.py')
-
-print('✅ No cloud LLM imports detected')
-PYTHON_SCRIPT
-
-          
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "**🔐 Security Guarantee: All LLM inference happens locally on this runner. No data sent to external APIs.**" >> $GITHUB_STEP_SUMMARY
 
