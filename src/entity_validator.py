@@ -109,14 +109,16 @@ def validate_phone(answer: str, ground_truth: dict) -> dict:
 
     found_phones = extract_phone_numbers(answer)
 
-    # Check if expected phone is in found phones (with fuzzy matching for formatting)
+    # Check if expected phone is in found phones (with fuzzy matching for
+    # formatting)
     matched = any(fuzzy_match(expected_phone, found) > 0.8 for found in found_phones)
 
     return {
         "score": 1.0 if matched else 0.0,
         "found": found_phones,
         "expected": expected_phone,
-        "passed": matched or len(found_phones) == 0,  # Pass if no phone mentioned
+        # Pass if no phone mentioned
+        "passed": matched or len(found_phones) == 0,
     }
 
 
@@ -144,7 +146,8 @@ def validate_email(answer: str, ground_truth: dict) -> dict:
         "score": 1.0 if matched else 0.0,
         "found": found_emails,
         "expected": expected_email,
-        "passed": matched or len(found_emails) == 0,  # Pass if no email mentioned
+        # Pass if no email mentioned
+        "passed": matched or len(found_emails) == 0,
     }
 
 

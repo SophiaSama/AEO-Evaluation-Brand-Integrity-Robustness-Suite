@@ -15,11 +15,11 @@ import json
 import sys
 from pathlib import Path
 
-PROJECT_ROOT = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(PROJECT_ROOT))
-
 from src.config import CLEAN_DIR, DOCUMENTS_JSON
 from src.crawler import crawl_brand
+
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(PROJECT_ROOT))
 
 
 def load_seed_urls_from_file(filepath: Path) -> dict[str, list[str]]:
@@ -48,13 +48,13 @@ def main():
 Examples:
   # Use specific URLs
   python scripts/crawl_brand.py --brand Manus --urls "https://manus.im/" "https://manus.im/docs/"
-  
+
   # Use URLs from config file
   python scripts/crawl_brand.py --brand MyBrand --seed-urls-file data/seed_urls.json
-  
+
   # Use only seed URLs (no search)
   python scripts/crawl_brand.py --brand Manus --no-search
-  
+
   # Filter by sentiment
   python scripts/crawl_brand.py --brand Manus --min-sentiment 0
         """,
@@ -114,7 +114,8 @@ Examples:
                 f"Warning: Brand '{args.brand}' not found in {args.seed_urls_file}, will use search"
             )
 
-    # Prefer updating documents.json when it exists so a single file organises all data
+    # Prefer updating documents.json when it exists so a single file organises
+    # all data
     output_json = DOCUMENTS_JSON if DOCUMENTS_JSON.exists() else None
     saved = crawl_brand(
         brand=args.brand,

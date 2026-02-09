@@ -18,13 +18,13 @@ def main():
 Examples:
   # Generate report from latest results
   python scripts/visualize_results.py results/birs_results.json
-  
+
   # Specify custom output path
   python scripts/visualize_results.py results/birs_results.json -o reports/analysis.html
-  
+
   # Process all JSON files in a directory
   python scripts/visualize_results.py results/*.json
-  
+
   # Generate report and open in browser
   python scripts/visualize_results.py results/birs_results.json --open
         """,

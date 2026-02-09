@@ -25,7 +25,7 @@ if sys.platform == "win32":
 
         sys.stdout = codecs.getwriter("utf-8")(sys.stdout.buffer, "strict")
         sys.stderr = codecs.getwriter("utf-8")(sys.stderr.buffer, "strict")
-    except:
+    except BaseException:
         pass
 
 
@@ -92,13 +92,13 @@ def main():
 Examples:
   Run tests with 4 shards (recommended):
     python scripts/run_sharded_tests.py --shards 4
-  
+
   Run tests with 2 shards:
     python scripts/run_sharded_tests.py --shards 2
-  
+
   List test files without running:
     python scripts/run_sharded_tests.py --list-only
-  
+
   Run with specific Python version:
     python scripts/run_sharded_tests.py --shards 4 --python-version python3.11
         """,
@@ -160,7 +160,7 @@ Examples:
             ],
             check=True,
         )
-    except:
+    except BaseException:
         print(
             "[WARN] Warning: Could not install pytest-split. Make sure it's installed."
         )

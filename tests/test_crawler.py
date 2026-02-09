@@ -27,7 +27,8 @@ def test_crawl_brand_empty_urls_returns_empty_when_no_search():
 
     with tempfile.TemporaryDirectory() as tmp:
         out = Path(tmp)
-        # Brand other than Manus, no urls, no search -> urls stay empty or from search
+        # Brand other than Manus, no urls, no search -> urls stay empty or from
+        # search
         saved = crawl_brand(
             "SomeOtherBrand", urls=[], output_dir=out, max_docs=2, use_search=False
         )
