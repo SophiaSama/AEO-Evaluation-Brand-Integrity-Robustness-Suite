@@ -3,62 +3,65 @@ BIRS Visualization Module
 Generates interactive HTML reports with charts for test results.
 Uses Plotly for interactive visualizations (no external dependencies).
 """
+
 import json
 from pathlib import Path
 from typing import Any, Dict, List
 from datetime import datetime
 
 
-def generate_html_report(results_json_path: Path, output_path: Path | None = None) -> Path:
+def generate_html_report(
+    results_json_path: Path, output_path: Path | None = None
+) -> Path:
     """
     Generate an interactive HTML report with visualizations from BIRS results.
-    
+
     Args:
         results_json_path: Path to birs_results.json
         output_path: Path to save HTML report (default: same dir as JSON with .html)
-    
+
     Returns:
         Path to generated HTML file
     """
     # Load results
-    with open(results_json_path, 'r', encoding='utf-8') as f:
+    with open(results_json_path, "r", encoding="utf-8") as f:
         results = json.load(f)
-    
+
     # Default output path
     if output_path is None:
-        output_path = results_json_path.with_suffix('.html')
-    
+        output_path = results_json_path.with_suffix(".html")
+
     # Generate HTML with embedded visualizations
     html_content = _build_html_report(results)
-    
+
     # Write to file
     output_path.parent.mkdir(parents=True, exist_ok=True)
-    with open(output_path, 'w', encoding='utf-8') as f:
+    with open(output_path, "w", encoding="utf-8") as f:
         f.write(html_content)
-    
+
     return output_path
 
 
 def _build_html_report(results: Dict[str, Any]) -> str:
     """Build complete HTML report with inline JavaScript visualizations."""
-    
-    scoring = results.get('scoring', {})
-    tests = results.get('tests', {})
-    
+
+    scoring = results.get("scoring", {})
+    tests = results.get("tests", {})
+
     # Extract metrics
-    sentiment_before = scoring.get('sentiment_before', 0)
-    sentiment_after = scoring.get('sentiment_after', 0)
-    sentiment_drift = scoring.get('sentiment_drift', 0)
-    citation_fidelity = scoring.get('citation_fidelity', 0)
-    liar_score = scoring.get('liar_score', 0)
-    
+    sentiment_before = scoring.get("sentiment_before", 0)
+    sentiment_after = scoring.get("sentiment_after", 0)
+    sentiment_drift = scoring.get("sentiment_drift", 0)
+    citation_fidelity = scoring.get("citation_fidelity", 0)
+    liar_score = scoring.get("liar_score", 0)
+
     # Test results
     test_scores = {}
     test_passes = {}
     for test_id, test_data in tests.items():
-        test_scores[test_id] = test_data.get('score', 0)
-        test_passes[test_id] = test_data.get('pass', False)
-    
+        test_scores[test_id] = test_data.get("score", 0)
+        test_passes[test_id] = test_data.get("pass", False)
+
     # Generate charts using Plotly CDN
     html = f"""<!DOCTYPE html>
 <html lang="en">
@@ -433,47 +436,49 @@ def _build_html_report(results: Dict[str, Any]) -> str:
     </script>
 </body>
 </html>"""
-    
+
     return html
 
 
-def _get_status_class(value: float, threshold: float = 0.5, lower_is_better: bool = False) -> str:
+def _get_status_class(
+    value: float, threshold: float = 0.5, lower_is_better: bool = False
+) -> str:
     """Determine status class based on value and threshold."""
     if lower_is_better:
-        return 'pass' if abs(value) < threshold else 'fail'
+        return "pass" if abs(value) < threshold else "fail"
     else:
-        return 'pass' if value >= threshold else 'fail'
+        return "pass" if value >= threshold else "fail"
 
 
 def _get_overall_status(test_passes: Dict[str, bool]) -> str:
     """Get overall status based on test passes."""
     if not test_passes:
-        return ''
+        return ""
     pass_rate = sum(test_passes.values()) / len(test_passes)
-    return 'pass' if pass_rate >= 0.8 else 'fail'
+    return "pass" if pass_rate >= 0.8 else "fail"
 
 
 def _generate_test_cards(tests: Dict[str, Any]) -> str:
     """Generate HTML for test result cards."""
     cards = []
-    
+
     test_descriptions = {
-        'BIRS-01': 'Consensus Attack - Tests resilience against overwhelming misinformation',
-        'BIRS-02': 'Authority Bias - Tests preference for official sources over forums',
-        'BIRS-03': 'Hallucination Trigger - Tests refusal to fabricate non-existent information',
-        'BIRS-04': 'NAP+E Consistency - Tests accuracy of Name, Address, Phone, Email',
-        'BIRS-05': 'Citation Veracity - Tests verification of claims against sources',
-        'BIRS-06': 'Source Attribution - Tests proper attribution of information sources'
+        "BIRS-01": "Consensus Attack - Tests resilience against overwhelming misinformation",
+        "BIRS-02": "Authority Bias - Tests preference for official sources over forums",
+        "BIRS-03": "Hallucination Trigger - Tests refusal to fabricate non-existent information",
+        "BIRS-04": "NAP+E Consistency - Tests accuracy of Name, Address, Phone, Email",
+        "BIRS-05": "Citation Veracity - Tests verification of claims against sources",
+        "BIRS-06": "Source Attribution - Tests proper attribution of information sources",
     }
-    
+
     for test_id, test_data in tests.items():
-        score = test_data.get('score', 0)
-        passed = test_data.get('pass', False)
-        description = test_descriptions.get(test_id, 'Test case')
-        
-        status_class = 'pass' if passed else 'fail'
-        status_text = '✓ PASS' if passed else '✗ FAIL'
-        
+        score = test_data.get("score", 0)
+        passed = test_data.get("pass", False)
+        description = test_descriptions.get(test_id, "Test case")
+
+        status_class = "pass" if passed else "fail"
+        status_text = "✓ PASS" if passed else "✗ FAIL"
+
         card = f"""
         <div class="test-card {status_class}">
             <h3>{test_id}</h3>
@@ -485,13 +490,14 @@ def _generate_test_cards(tests: Dict[str, Any]) -> str:
         </div>
         """
         cards.append(card)
-    
-    return '\n'.join(cards)
+
+    return "\n".join(cards)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     # Example usage
     import sys
+
     if len(sys.argv) > 1:
         results_path = Path(sys.argv[1])
         html_path = generate_html_report(results_path)

@@ -9,6 +9,7 @@ URL sources (in order of priority):
 3. Built-in seed URLs for known brands (Manus)
 4. DuckDuckGo search (unless --no-search is used)
 """
+
 import argparse
 import json
 import sys
@@ -56,16 +57,29 @@ Examples:
   
   # Filter by sentiment
   python scripts/crawl_brand.py --brand Manus --min-sentiment 0
-        """
+        """,
     )
     p.add_argument("--brand", default="Manus", help="Brand name (default: Manus)")
-    p.add_argument("--max-docs", type=int, default=5, help="Max number of clean docs to save (default: 5)")
-    p.add_argument("--no-search", action="store_true", help="Only use seed URLs (no DuckDuckGo search)")
-    p.add_argument("--urls", nargs="*", help="List of URLs to fetch (overrides seed URLs and search)")
+    p.add_argument(
+        "--max-docs",
+        type=int,
+        default=5,
+        help="Max number of clean docs to save (default: 5)",
+    )
+    p.add_argument(
+        "--no-search",
+        action="store_true",
+        help="Only use seed URLs (no DuckDuckGo search)",
+    )
+    p.add_argument(
+        "--urls",
+        nargs="*",
+        help="List of URLs to fetch (overrides seed URLs and search)",
+    )
     p.add_argument(
         "--seed-urls-file",
         type=Path,
-        help="Path to JSON file with brand seed URLs (format: {\"Brand\": [\"url1\", \"url2\"]})"
+        help='Path to JSON file with brand seed URLs (format: {"Brand": ["url1", "url2"]})',
     )
     p.add_argument(
         "--min-sentiment",
@@ -74,7 +88,11 @@ Examples:
         metavar="FLOAT",
         help="Only save pages with VADER compound sentiment >= this (e.g. 0 or -0.2). Use when real data is often negative.",
     )
-    p.add_argument("--no-warn-negative", action="store_true", help="Do not warn when a crawled page is highly negative")
+    p.add_argument(
+        "--no-warn-negative",
+        action="store_true",
+        help="Do not warn when a crawled page is highly negative",
+    )
     args = p.parse_args()
 
     # Determine URLs to use
@@ -88,9 +106,13 @@ Examples:
         seed_config = load_seed_urls_from_file(args.seed_urls_file)
         if args.brand in seed_config:
             urls_to_crawl = seed_config[args.brand]
-            print(f"Using {len(urls_to_crawl)} seed URLs from {args.seed_urls_file} for brand '{args.brand}'")
+            print(
+                f"Using {len(urls_to_crawl)} seed URLs from {args.seed_urls_file} for brand '{args.brand}'"
+            )
         else:
-            print(f"Warning: Brand '{args.brand}' not found in {args.seed_urls_file}, will use search")
+            print(
+                f"Warning: Brand '{args.brand}' not found in {args.seed_urls_file}, will use search"
+            )
 
     # Prefer updating documents.json when it exists so a single file organises all data
     output_json = DOCUMENTS_JSON if DOCUMENTS_JSON.exists() else None
@@ -105,7 +127,9 @@ Examples:
         warn_negative=not args.no_warn_negative,
     )
     if output_json and saved:
-        print(f"Updated {DOCUMENTS_JSON} with new clean content. Run ingest to rebuild ChromaDB.")
+        print(
+            f"Updated {DOCUMENTS_JSON} with new clean content. Run ingest to rebuild ChromaDB."
+        )
     else:
         print(f"Saved {len(saved)} documents to {CLEAN_DIR}")
     for path in saved:

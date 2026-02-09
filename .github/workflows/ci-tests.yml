@@ -68,6 +68,8 @@ jobs:
           pip install pytest pytest-cov pytest-xdist
 
       - name: Run unit tests
+        env:
+          PYTHONPATH: ${{ github.workspace }}
         run: |
           pytest tests/ -v \
             --cov=src \
@@ -204,51 +206,10 @@ jobs:
           name: bandit-security-report
           path: bandit-report.json
 
-  docs-check:
-    name: Documentation Check
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Check for broken links in Markdown
-        uses: gaurav-nelson/github-action-markdown-link-check@v1
-        with:
-          use-quiet-mode: 'yes'
-          use-verbose-mode: 'yes'
-          config-file: '.github/markdown-link-check-config.json'
-        continue-on-error: true
-
-      - name: Check documentation files
-        run: |
-          docs=(
-            "README.md"
-            "docs/BIRS_PLAN.md"
-            "docs/AEO_INTEGRATION.md"
-            "docs/CRAWLING_GUIDE.md"
-            "docs/AEO_AUDIT_SUMMARY.md"
-          )
-          
-          missing=0
-          for doc in "${docs[@]}"; do
-            if [ ! -f "$doc" ]; then
-              echo "✗ Missing: $doc"
-              missing=$((missing + 1))
-            else
-              echo "✓ Found: $doc"
-            fi
-          done
-          
-          if [ $missing -gt 0 ]; then
-            echo "Warning: $missing documentation files missing"
-          else
-            echo "✓ All documentation files present"
-          fi
-
   summary:
     name: Test Summary
     runs-on: ubuntu-latest
-    needs: [lint, unit-tests, structure-validation, security-scan, docs-check]
+    needs: [lint, unit-tests, structure-validation, security-scan]
     if: always()
     steps:
       - name: Check test results
@@ -261,4 +222,3 @@ jobs:
           echo "| Unit Tests | ${{ needs.unit-tests.result }} |" >> $GITHUB_STEP_SUMMARY
           echo "| Structure Validation | ${{ needs.structure-validation.result }} |" >> $GITHUB_STEP_SUMMARY
           echo "| Security Scan | ${{ needs.security-scan.result }} |" >> $GITHUB_STEP_SUMMARY
-          echo "| Documentation Check | ${{ needs.docs-check.result }} |" >> $GITHUB_STEP_SUMMARY

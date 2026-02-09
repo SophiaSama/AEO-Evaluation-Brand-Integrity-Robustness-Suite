@@ -27,6 +27,9 @@ jobs:
     name: RAG Query Performance
     runs-on: ubuntu-latest
     
+    env:
+      PYTHONPATH: ${{ github.workspace }}
+    
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -70,13 +73,15 @@ jobs:
           if [ -z "$NUM_QUERIES" ]; then
             NUM_QUERIES="10"
           fi
+          export NUM_QUERIES
           
-          python << 'EOF' > benchmark_results.json
+          python << 'PYTHON_SCRIPT' > benchmark_results.json
 import json
 import time
+import os
 from src.baseline import get_baseline_response
 
-num_queries = int("$NUM_QUERIES")
+num_queries = int(os.environ.get('NUM_QUERIES', '10'))
 results = []
 
 for i in range(num_queries):
@@ -85,33 +90,33 @@ for i in range(num_queries):
     end = time.time()
     
     results.append({
-        "query_num": i + 1,
-        "latency_ms": round((end - start) * 1000, 2),
-        "answer_length": len(answer),
-        "contexts_retrieved": len(contexts)
+        'query_num': i + 1,
+        'latency_ms': round((end - start) * 1000, 2),
+        'answer_length': len(answer),
+        'contexts_retrieved': len(contexts)
     })
 
 # Calculate statistics
-latencies = [r["latency_ms"] for r in results]
+latencies = [r['latency_ms'] for r in results]
 avg_latency = sum(latencies) / len(latencies)
 min_latency = min(latencies)
 max_latency = max(latencies)
 p95_latency = sorted(latencies)[int(len(latencies) * 0.95)]
 
 summary = {
-    "num_queries": num_queries,
-    "avg_latency_ms": round(avg_latency, 2),
-    "min_latency_ms": min_latency,
-    "max_latency_ms": max_latency,
-    "p95_latency_ms": p95_latency,
-    "queries": results
+    'num_queries': num_queries,
+    'avg_latency_ms': round(avg_latency, 2),
+    'min_latency_ms': min_latency,
+    'max_latency_ms': max_latency,
+    'p95_latency_ms': p95_latency,
+    'queries': results
 }
 
-with open("benchmark_results.json", "w") as f:
+with open('benchmark_results.json', 'w') as f:
     json.dump(summary, f, indent=2)
 
 print(json.dumps(summary, indent=2))
-EOF
+PYTHON_SCRIPT
 
       - name: Display benchmark results
         run: |

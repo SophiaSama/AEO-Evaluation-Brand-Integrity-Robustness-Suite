@@ -1,4 +1,5 @@
 """Brand Integrity Robustness Suite (BIRS) - Sandboxed RAG evaluation."""
+
 from src.config import (
     BRAND_NAME,
     CHROMA_DIR,

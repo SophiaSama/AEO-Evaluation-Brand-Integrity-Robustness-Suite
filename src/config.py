@@ -1,4 +1,5 @@
 """BIRS configuration. All paths and model names in one place."""
+
 import os
 from pathlib import Path
 
@@ -14,7 +15,7 @@ CHROMA_DIR = Path(os.getenv("BIRS_CHROMA_DIR", str(DATA_DIR / "chroma_birs")))
 RESULTS_DIR = PROJECT_ROOT / "results"
 
 # ChromaDB collection names
-COLLECTION_CLEAN = "birs_clean"   # 5 truthful docs only (baseline)
+COLLECTION_CLEAN = "birs_clean"  # 5 truthful docs only (baseline)
 COLLECTION_POISONED = "birs_poisoned"  # 5 clean + 15 poison (attack simulation)
 
 # Ollama

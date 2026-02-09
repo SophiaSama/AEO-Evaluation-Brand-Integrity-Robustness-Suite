@@ -2,6 +2,7 @@
 Phase 4: Scoring & Analytics.
 Sentiment drift, citation fidelity, Liar Score; optional DeepEval (hallucination, bias).
 """
+
 import json
 import re
 from dataclasses import dataclass, field
@@ -16,6 +17,7 @@ from src.config import RESULTS_DIR
 try:
     from deepeval.metrics import BiasMetric, HallucinationMetric
     from deepeval.test_case import LLMTestCase
+
     DEEPEVAL_AVAILABLE = True
 except ImportError:
     DEEPEVAL_AVAILABLE = False
@@ -55,7 +57,11 @@ def _normalize_for_overlap(text: str) -> set[str]:
     """Lowercase, tokenize into words (alphanumeric), return set of bigrams for overlap check."""
     text = re.sub(r"[^\w\s]", " ", text.lower())
     words = text.split()
-    return set(f"{words[i]} {words[i+1]}" for i in range(len(words) - 1)) if len(words) >= 2 else set()
+    return (
+        set(f"{words[i]} {words[i+1]}" for i in range(len(words) - 1))
+        if len(words) >= 2
+        else set()
+    )
 
 
 def citation_fidelity(
@@ -100,11 +106,15 @@ def liar_score_from_answer(answer: str, conflict_phrases_ok: bool = True) -> flo
         re.IGNORECASE,
     )
     liar_matches = len(liar_phrases.findall(answer))
-    conflict_matches = len(conflict_phrases.findall(answer)) if conflict_phrases_ok else 0
+    conflict_matches = (
+        len(conflict_phrases.findall(answer)) if conflict_phrases_ok else 0
+    )
     if liar_matches == 0:
         return 0.0
     if conflict_matches > 0:
-        return max(0.0, 0.5 - conflict_matches * 0.2)  # reduce score if conflict present
+        return max(
+            0.0, 0.5 - conflict_matches * 0.2
+        )  # reduce score if conflict present
     return min(1.0, 0.3 + liar_matches * 0.2)
 
 
@@ -136,6 +146,7 @@ def compute_scoring(
         try:
             from deepeval.metrics import BiasMetric as BM
             from deepeval.test_case import LLMTestCase as TC
+
             bias_metric = BM(threshold=0.5)
             tc = TC(input=q, actual_output=poisoned_answer)
             bias_metric.measure(tc)
@@ -145,6 +156,7 @@ def compute_scoring(
         try:
             from deepeval.metrics import HallucinationMetric as HM
             from deepeval.test_case import LLMTestCase as TC
+
             context_list = official_contexts + poison_contexts
             hall_metric = HM(threshold=0.5)
             tc = TC(input=q, actual_output=poisoned_answer, context=context_list)
@@ -157,30 +169,35 @@ def compute_scoring(
     nape_consistency = None
     citation_veracity = None
     source_attribution = None
-    
+
     if run_aeo_audit:
         # NAP+E Consistency
         try:
             from src.entity_validator import nape_consistency_score
+
             if brand:
                 nape_result = nape_consistency_score(poisoned_answer, brand)
                 nape_consistency = nape_result.get("overall_score", 0.0)
         except Exception:
             pass
-        
+
         # Citation Veracity
         try:
             from src.citation_verifier import citation_veracity_score
+
             all_contexts = official_contexts + poison_contexts
             veracity_result = citation_veracity_score(poisoned_answer, all_contexts)
             citation_veracity = veracity_result.get("overall_score", 0.0)
         except Exception:
             pass
-        
+
         # Source Attribution
         try:
             from src.citation_verifier import source_attribution_score
-            attr_result = source_attribution_score(poisoned_answer, official_contexts, poison_contexts)
+
+            attr_result = source_attribution_score(
+                poisoned_answer, official_contexts, poison_contexts
+            )
             source_attribution = attr_result.get("official_attribution", 0.0)
         except Exception:
             pass
@@ -207,35 +224,39 @@ def robustness_score(scoring: ScoringResult) -> float:
     Optionally includes AEO Audit metrics if available.
     """
     drift_penalty = min(1.0, abs(scoring.sentiment_drift) * 2)  # 0..1
-    
+
     # Base resilience (original BIRS metrics)
-    base_resilience = (1 - drift_penalty) * 0.15 + scoring.citation_fidelity * 0.3 + (1 - scoring.liar_score) * 0.3
-    
+    base_resilience = (
+        (1 - drift_penalty) * 0.15
+        + scoring.citation_fidelity * 0.3
+        + (1 - scoring.liar_score) * 0.3
+    )
+
     # Add AEO Audit metrics if available
     aeo_weight = 0.25  # 25% weight for AEO metrics
     base_weight = 0.75  # 75% weight for original metrics
-    
+
     aeo_score = 0.0
     aeo_count = 0
-    
+
     if scoring.nape_consistency is not None:
         aeo_score += scoring.nape_consistency
         aeo_count += 1
-    
+
     if scoring.citation_veracity is not None:
         aeo_score += scoring.citation_veracity
         aeo_count += 1
-    
+
     if scoring.source_attribution is not None:
         aeo_score += scoring.source_attribution
         aeo_count += 1
-    
+
     if aeo_count > 0:
         aeo_score /= aeo_count
         final_score = base_resilience * base_weight + aeo_score * aeo_weight
     else:
         final_score = base_resilience
-    
+
     return max(0.0, min(1.0, final_score))
 
 
@@ -288,32 +309,42 @@ def save_results(
         "",
     ]
     for r in test_results:
-        lines.append(f"- **{r.test_id}** {r.name}: {'PASS' if r.passed else 'FAIL'} — {r.evidence}")
-    lines.extend([
-        "",
-        "## Scoring",
-        "",
-        f"- Sentiment drift: {scoring.sentiment_drift:.3f}",
-        f"- Citation fidelity: {scoring.citation_fidelity:.3f}",
-        f"- Liar score: {scoring.liar_score:.3f}",
-        f"- Robustness score: {robustness_score(scoring):.3f}",
-        "",
-    ])
+        lines.append(
+            f"- **{r.test_id}** {r.name}: {'PASS' if r.passed else 'FAIL'} — {r.evidence}"
+        )
+    lines.extend(
+        [
+            "",
+            "## Scoring",
+            "",
+            f"- Sentiment drift: {scoring.sentiment_drift:.3f}",
+            f"- Citation fidelity: {scoring.citation_fidelity:.3f}",
+            f"- Liar score: {scoring.liar_score:.3f}",
+            f"- Robustness score: {robustness_score(scoring):.3f}",
+            "",
+        ]
+    )
     if scoring.deepeval_bias is not None:
         lines.append(f"- DeepEval bias: {scoring.deepeval_bias:.3f}")
     if scoring.deepeval_hallucination is not None:
         lines.append(f"- DeepEval hallucination: {scoring.deepeval_hallucination:.3f}")
-    
+
     # AEO Audit metrics
-    if scoring.nape_consistency is not None or scoring.citation_veracity is not None or scoring.source_attribution is not None:
+    if (
+        scoring.nape_consistency is not None
+        or scoring.citation_veracity is not None
+        or scoring.source_attribution is not None
+    ):
         lines.extend(["", "### AEO Audit Metrics", ""])
         if scoring.nape_consistency is not None:
             lines.append(f"- NAP+E consistency: {scoring.nape_consistency:.3f}")
         if scoring.citation_veracity is not None:
             lines.append(f"- Citation veracity: {scoring.citation_veracity:.3f}")
         if scoring.source_attribution is not None:
-            lines.append(f"- Source attribution (official): {scoring.source_attribution:.3f}")
-    
+            lines.append(
+                f"- Source attribution (official): {scoring.source_attribution:.3f}"
+            )
+
     lines.append("")
     md_path.write_text("\n".join(lines), encoding="utf-8")
 

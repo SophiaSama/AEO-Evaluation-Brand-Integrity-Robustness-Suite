@@ -6,6 +6,7 @@ Creates two collections:
 
 Run from project root: python scripts/ingest_documents.py
 """
+
 import json
 import sys
 from pathlib import Path
@@ -32,13 +33,13 @@ def load_documents() -> dict:
             f"documents.json not found at {DOCUMENTS_JSON}. "
             "Create it first or use scripts/build_documents_json.py to generate from .txt files."
         )
-    
+
     with open(DOCUMENTS_JSON, "r", encoding="utf-8") as f:
         data = json.load(f)
-    
+
     if "clean" not in data or "poison" not in data:
         raise ValueError("documents.json must have 'clean' and 'poison' keys")
-    
+
     return data
 
 
@@ -53,17 +54,17 @@ def ingest_collection(client, collection_name: str, documents: list[dict], embed
         print(f"Deleted existing collection: {collection_name}")
     except Exception:
         pass
-    
+
     # Create collection
     collection = client.create_collection(
         name=collection_name,
-        metadata={"description": f"BIRS collection: {collection_name}"}
+        metadata={"description": f"BIRS collection: {collection_name}"},
     )
-    
+
     if not documents:
         print(f"No documents to ingest for {collection_name}")
         return
-    
+
     # Prepare data
     ids = [doc["id"] for doc in documents]
     contents = [doc["content"] for doc in documents]
@@ -74,11 +75,11 @@ def ingest_collection(client, collection_name: str, documents: list[dict], embed
         }
         for doc in documents
     ]
-    
+
     # Generate embeddings
     print(f"Generating embeddings for {len(documents)} documents...")
     embeddings = embedder.encode(contents, show_progress_bar=True).tolist()
-    
+
     # Add to collection
     collection.add(
         ids=ids,
@@ -86,7 +87,7 @@ def ingest_collection(client, collection_name: str, documents: list[dict], embed
         documents=contents,
         metadatas=metadatas,
     )
-    
+
     print(f"✓ Ingested {len(documents)} documents into {collection_name}")
 
 
@@ -95,34 +96,34 @@ def main():
     print("=" * 60)
     print("BIRS Document Ingestion")
     print("=" * 60)
-    
+
     # Load documents
     print(f"\nLoading documents from {DOCUMENTS_JSON}...")
     data = load_documents()
     clean_docs = data["clean"]
     poison_docs = data["poison"]
-    
+
     print(f"Found {len(clean_docs)} clean documents")
     print(f"Found {len(poison_docs)} poison documents")
-    
+
     # Initialize ChromaDB
     CHROMA_DIR.mkdir(parents=True, exist_ok=True)
     client = PersistentClient(path=str(CHROMA_DIR))
-    
+
     # Load embedding model
     print(f"\nLoading embedding model: {EMBEDDING_MODEL}")
     print("(First run will download the model, ~80MB)")
     embedder = SentenceTransformer(EMBEDDING_MODEL)
-    
+
     # Ingest clean collection (baseline)
     print(f"\n1. Ingesting CLEAN collection ({COLLECTION_CLEAN})...")
     ingest_collection(client, COLLECTION_CLEAN, clean_docs, embedder)
-    
+
     # Ingest poisoned collection (clean + poison)
     print(f"\n2. Ingesting POISONED collection ({COLLECTION_POISONED})...")
     combined_docs = clean_docs + poison_docs
     ingest_collection(client, COLLECTION_POISONED, combined_docs, embedder)
-    
+
     print("\n" + "=" * 60)
     print("✓ Ingestion complete!")
     print("=" * 60)

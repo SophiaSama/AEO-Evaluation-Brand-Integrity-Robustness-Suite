@@ -1,4 +1,5 @@
 """Unit tests for scoring: sentiment, citation fidelity, Liar Score."""
+
 import pytest
 from src.scoring import (
     citation_fidelity,
