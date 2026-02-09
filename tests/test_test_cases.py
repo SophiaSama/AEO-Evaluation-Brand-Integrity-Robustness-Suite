@@ -2,8 +2,12 @@
 
 import pytest
 
-from src.test_cases import (CONFLICT_PHRASES, HALLUCINATED_NUMBER,
-                            LIAR_PHRASES, NO_LEAK_PHRASES)
+from src.test_cases import (
+    CONFLICT_PHRASES,
+    HALLUCINATED_NUMBER,
+    LIAR_PHRASES,
+    NO_LEAK_PHRASES,
+)
 
 
 def test_liar_phrases_match():

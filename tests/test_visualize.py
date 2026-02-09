@@ -5,8 +5,7 @@ from pathlib import Path
 
 import pytest
 
-from src.visualize import (_get_overall_status, _get_status_class,
-                           generate_html_report)
+from src.visualize import _get_overall_status, _get_status_class, generate_html_report
 
 
 def test_get_status_class():

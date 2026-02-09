@@ -2,9 +2,14 @@
 
 import pytest
 
-from src.scoring import (ScoringResult, citation_fidelity, get_sentiment,
-                         liar_score_from_answer, robustness_score,
-                         sentiment_drift)
+from src.scoring import (
+    ScoringResult,
+    citation_fidelity,
+    get_sentiment,
+    liar_score_from_answer,
+    robustness_score,
+    sentiment_drift,
+)
 
 
 def test_get_sentiment():

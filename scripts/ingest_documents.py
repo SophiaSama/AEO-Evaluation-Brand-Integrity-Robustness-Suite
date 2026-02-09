@@ -17,8 +17,13 @@ sys.path.insert(0, str(PROJECT_ROOT))
 from chromadb import PersistentClient
 from sentence_transformers import SentenceTransformer
 
-from src.config import (CHROMA_DIR, COLLECTION_CLEAN, COLLECTION_POISONED,
-                        DOCUMENTS_JSON, EMBEDDING_MODEL)
+from src.config import (
+    CHROMA_DIR,
+    COLLECTION_CLEAN,
+    COLLECTION_POISONED,
+    DOCUMENTS_JSON,
+    EMBEDDING_MODEL,
+)
 
 
 def load_documents() -> dict:
