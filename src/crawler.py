@@ -16,7 +16,9 @@ from urllib.parse import urlparse
 import requests
 import trafilatura
 from duckduckgo_search import DDGS
-from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
+from vaderSentiment.vaderSentiment import (
+    SentimentIntensityAnalyzer,  # type: ignore[import-untyped]
+)
 
 from src.config import CLEAN_DIR
 

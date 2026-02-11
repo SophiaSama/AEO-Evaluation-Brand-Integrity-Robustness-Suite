@@ -9,7 +9,9 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
-from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
+from vaderSentiment.vaderSentiment import (
+    SentimentIntensityAnalyzer,  # type: ignore[import-untyped]
+)
 
 from src.config import RESULTS_DIR
 
