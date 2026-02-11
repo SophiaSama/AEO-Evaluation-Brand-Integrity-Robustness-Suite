@@ -42,17 +42,14 @@ jobs:
         run: |
           set -euo pipefail
 
-          # Count test files
-          TEST_COUNT=$(find tests -name "test_*.py" | wc -l)
+          # Use Python for counting + JSON generation (avoids pipefail edge cases)
+          TEST_COUNT=$(python -c "from pathlib import Path; print(len(list(Path('tests').glob('test_*.py'))))")
           echo "Found $TEST_COUNT test files"
 
-          # Determine shard count (use workflow input if provided). For non-workflow_dispatch
-          # events, github.event.inputs is empty.
           INPUT_SHARDS="${{ github.event.inputs.shard-count }}"
           if [ -n "$INPUT_SHARDS" ]; then
             SHARD_COUNT="$INPUT_SHARDS"
           else
-            # Auto-calculate: 1 shard per 1-2 test files, max 4 shards
             SHARD_COUNT=$((TEST_COUNT / 2))
             if [ "$SHARD_COUNT" -lt 2 ]; then
               SHARD_COUNT=2
@@ -64,6 +61,11 @@ jobs:
           GROUPS=$(python -c "import json,sys; n=int(sys.argv[1]); print(json.dumps(list(range(1,n+1))))" "$SHARD_COUNT")
           echo "Using $SHARD_COUNT shards"
           echo "Generated test groups: $GROUPS"
+
+          if [ -z "${GITHUB_OUTPUT:-}" ]; then
+            echo "GITHUB_OUTPUT is not set" >&2
+            exit 1
+          fi
 
           {
             echo "shard-count=$SHARD_COUNT"
