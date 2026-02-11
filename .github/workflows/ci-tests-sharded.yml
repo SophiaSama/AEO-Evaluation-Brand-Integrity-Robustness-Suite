@@ -45,15 +45,18 @@ jobs:
         id: calculate
         shell: bash
         run: |
-          set -euo pipefail
+          # Don't use -u since GitHub Actions templates can be undefined
+          set -eo pipefail
 
           # Use Python for counting + JSON generation (avoids pipefail edge cases)
           TEST_COUNT=$(python3 -c "from pathlib import Path; print(len(list(Path('tests').glob('test_*.py'))))")
           echo "Found $TEST_COUNT test files"
 
-          INPUT_SHARDS="${{ github.event.inputs.shard-count || '' }}"
-          if [ -n "$INPUT_SHARDS" ]; then
-            SHARD_COUNT="$INPUT_SHARDS"
+          # Handle optional workflow_dispatch input; default to empty for push/PR triggers
+          INPUT_SHARDS="${{ github.event.inputs.shard-count }}"
+          
+          if [ -n "${INPUT_SHARDS}" ]; then
+            SHARD_COUNT="${INPUT_SHARDS}"
           else
             SHARD_COUNT=$((TEST_COUNT / 2))
             if [ "$SHARD_COUNT" -lt 2 ]; then
@@ -67,14 +70,12 @@ jobs:
           echo "Using $SHARD_COUNT shards"
           echo "Generated test groups: $GROUPS"
 
-          if [ -z "${GITHUB_OUTPUT:-}" ]; then
-            echo "GITHUB_OUTPUT is not set" >&2
-            exit 1
-          fi
-
+          # Write outputs with proper GitHub Actions format (EOF delimiter for special chars)
           {
             echo "shard-count=$SHARD_COUNT"
-            echo "test-groups=$GROUPS"
+            echo "test-groups<<EOF"
+            echo "$GROUPS"
+            echo "EOF"
           } >> "$GITHUB_OUTPUT"
 
   lint:
