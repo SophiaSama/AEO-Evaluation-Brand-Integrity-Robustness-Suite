@@ -46,9 +46,11 @@ jobs:
           TEST_COUNT=$(find tests -name "test_*.py" | wc -l)
           echo "Found $TEST_COUNT test files"
 
-          # Determine shard count (use workflow input if provided)
-          if [ -n "${{ github.event.inputs.shard-count || '' }}" ]; then
-            SHARD_COUNT="${{ github.event.inputs.shard-count }}"
+          # Determine shard count (use workflow input if provided). For non-workflow_dispatch
+          # events, github.event.inputs is empty.
+          INPUT_SHARDS="${{ github.event.inputs.shard-count }}"
+          if [ -n "$INPUT_SHARDS" ]; then
+            SHARD_COUNT="$INPUT_SHARDS"
           else
             # Auto-calculate: 1 shard per 1-2 test files, max 4 shards
             SHARD_COUNT=$((TEST_COUNT / 2))
@@ -63,8 +65,7 @@ jobs:
           echo "shard-count=$SHARD_COUNT" >> "$GITHUB_OUTPUT"
 
           # Emit VALID JSON for fromJson(...)
-          # e.g. [1,2,3,4]
-          GROUPS=$(python -c "import json; import sys; n=int(sys.argv[1]); print(json.dumps(list(range(1,n+1))))" "$SHARD_COUNT")
+          GROUPS=$(python -c "import json,sys; n=int(sys.argv[1]); print(json.dumps(list(range(1,n+1))))" "$SHARD_COUNT")
           echo "test-groups=$GROUPS" >> "$GITHUB_OUTPUT"
 
   lint:
@@ -303,7 +304,7 @@ jobs:
             exit 1
           fi
 
-          # unit-tests-sharded is a matrix job; treat anything other than success as failure.
+          # unit-tests-shared is a matrix job; treat anything other than success as failure.
           # (If you later allow continue-on-error for specific shards, change this gate.)
           if [[ "${{ needs.unit-tests-sharded.result }}" != "success" ]]; then
             echo "❌ Unit tests failed (at least one shard failed or was cancelled)"
