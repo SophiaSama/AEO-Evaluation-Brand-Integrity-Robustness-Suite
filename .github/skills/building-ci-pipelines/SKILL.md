@@ -465,3 +465,25 @@ Configure isort to be Black-compatible to minimize conflicts:
 
 ### Debugging Tip
 Use CI output like **“would reformat …”** as the exact checklist of files that need formatting, then re-run formatters locally and commit the result.
+
+## Lesson Learned: Pytest Marker Selection Can Yield 0 Tests (Exit Code 5)
+
+When CI runs `pytest -m "integration"` (or any marker expression), pytest will still *collect* tests but may **select zero** if no tests match the marker.
+
+- Example output: `collected 17 items / 17 deselected / 0 selected`
+- Pytest then exits with **code 5**, which many pipelines interpret as failure.
+
+### Mitigations
+- Prefer **explicit markers** (`@pytest.mark.integration`) for tests that actually require external services (e.g., Ollama/Chroma).
+- Keep unit tests unmarked (or mark them `unit`) and run them with `-m "not integration"`.
+- If your repo legitimately has *no* integration tests yet, treat exit code 5 as a **non-failure** in the integration job.
+
+## Lesson Learned: Avoid Indented Multi-line `python -c` in Workflows
+
+In GitHub Actions, embedding multi-line Python inside `python -c "..."` often introduces leading indentation that Python treats as a syntax error:
+
+- `IndentationError: unexpected indent` (shown as `File "<string>", line ...`)
+
+### Safer Patterns
+- Use a **single-line** `python -c "..."` command.
+- Or better, move logic into a checked-in script (e.g., `scripts/*.py`) and call `python scripts/your_script.py`.

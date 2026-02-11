@@ -38,37 +38,34 @@ jobs:
 
       - name: Calculate optimal shards
         id: calculate
+        shell: bash
         run: |
+          set -euo pipefail
+
           # Count test files
           TEST_COUNT=$(find tests -name "test_*.py" | wc -l)
           echo "Found $TEST_COUNT test files"
-          
+
           # Determine shard count (use workflow input if provided)
-          if [ "${{ github.event.inputs.shard-count }}" != "" ]; then
-            SHARD_COUNT=${{ github.event.inputs.shard-count }}
+          if [ -n "${{ github.event.inputs.shard-count || '' }}" ]; then
+            SHARD_COUNT="${{ github.event.inputs.shard-count }}"
           else
             # Auto-calculate: 1 shard per 1-2 test files, max 4 shards
             SHARD_COUNT=$((TEST_COUNT / 2))
-            if [ $SHARD_COUNT -lt 2 ]; then
+            if [ "$SHARD_COUNT" -lt 2 ]; then
               SHARD_COUNT=2
-            elif [ $SHARD_COUNT -gt 4 ]; then
+            elif [ "$SHARD_COUNT" -gt 4 ]; then
               SHARD_COUNT=4
             fi
           fi
-          
+
           echo "Using $SHARD_COUNT shards"
-          echo "shard-count=$SHARD_COUNT" >> $GITHUB_OUTPUT
-          
-          # Create test groups for matrix
-          GROUPS="["
-          for i in $(seq 1 $SHARD_COUNT); do
-            if [ $i -gt 1 ]; then
-              GROUPS="${GROUPS},"
-            fi
-            GROUPS="${GROUPS}${i}"
-          done
-          GROUPS="${GROUPS}]"
-          echo "test-groups=$GROUPS" >> $GITHUB_OUTPUT
+          echo "shard-count=$SHARD_COUNT" >> "$GITHUB_OUTPUT"
+
+          # Emit VALID JSON for fromJson(...)
+          # e.g. [1,2,3,4]
+          GROUPS=$(python -c "import json; import sys; n=int(sys.argv[1]); print(json.dumps(list(range(1,n+1))))" "$SHARD_COUNT")
+          echo "test-groups=$GROUPS" >> "$GITHUB_OUTPUT"
 
   lint:
     name: Lint & Format Check
