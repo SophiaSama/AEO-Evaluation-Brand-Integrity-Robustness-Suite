@@ -39,40 +39,20 @@ jobs:
       - name: Run pip-audit (official PyPI vulnerability scanner)
         run: |
           pip-audit --desc --requirement requirements.txt --format json --output pip-audit-report.json || true
-          
+
           if [ -f pip-audit-report.json ]; then
             echo "### 🔍 Pip Audit Results" >> $GITHUB_STEP_SUMMARY
-            python -c "
-            import json
-            data = json.load(open('pip-audit-report.json'))
-            if data.get('vulnerabilities'):
-                print(f'{len(data[\"vulnerabilities\"])} vulnerabilities found')
-                for vuln in data['vulnerabilities'][:5]:
-                    print(f'- {vuln.get(\"name\")}: {vuln.get(\"id\")}')
-            else:
-                print('✓ No vulnerabilities found')
-            " >> $GITHUB_STEP_SUMMARY
+            python -c "import json; data=json.load(open('pip-audit-report.json')); vulns=data.get('vulnerabilities') or []; print(f'{len(vulns)} vulnerabilities found' if vulns else '✓ No vulnerabilities found'); [print(f\"- {v.get('name')}: {v.get('id')}\") for v in vulns[:5]]" >> $GITHUB_STEP_SUMMARY
           fi
 
       - name: Run Safety check
         run: |
           pip install -r requirements.txt
           safety check --json --output safety-report.json || true
-          
+
           if [ -f safety-report.json ]; then
             echo "### 🛡️ Safety Check Results" >> $GITHUB_STEP_SUMMARY
-            python -c "
-            import json
-            try:
-                data = json.load(open('safety-report.json'))
-                vulns = data.get('vulnerabilities', [])
-                if vulns:
-                    print(f'{len(vulns)} vulnerabilities found')
-                else:
-                    print('✓ No vulnerabilities found')
-            except:
-                print('✓ No issues detected')
-            " >> $GITHUB_STEP_SUMMARY
+            python -c "import json; data=json.load(open('safety-report.json')); vulns=(data.get('vulnerabilities') or []); print(f'{len(vulns)} vulnerabilities found' if vulns else '✓ No vulnerabilities found')" >> $GITHUB_STEP_SUMMARY
           fi
 
       - name: Upload security reports
