@@ -32,11 +32,17 @@ RAG_PROMPT = (
 )
 
 
-def get_retriever(collection_name: str):
-    """Build Chroma retriever for the given collection (birs_clean or birs_poisoned)."""
+def get_retriever(collection_name: str, *, chroma_dir=None):
+    """Build Chroma retriever for the given collection (birs_clean or birs_poisoned).
+
+    Args:
+        collection_name: Chroma collection name.
+        chroma_dir: Optional override for the Chroma persist directory. Useful for tests.
+    """
+    persist_dir = str(chroma_dir) if chroma_dir is not None else str(CHROMA_DIR)
     embeddings = HuggingFaceEmbeddings(model_name=EMBEDDING_MODEL)
     vectorstore = Chroma(
-        persist_directory=str(CHROMA_DIR),
+        persist_directory=persist_dir,
         embedding_function=embeddings,
         collection_name=collection_name,
     )

@@ -141,6 +141,7 @@ jobs:
         env:
           PYTHONPATH: ${{ github.workspace }}
         run: |
+          set -e
           pytest tests/ -v \
             --cov=src \
             --cov-report=term-missing \
@@ -151,6 +152,12 @@ jobs:
             --store-durations \
             --durations-path=.test_durations \
             -m "not integration and not e2e"
+          code=$?
+          if [ $code -eq 5 ]; then
+            echo "No tests selected for this shard (pytest exit 5); treating as success."
+            exit 0
+          fi
+          exit $code
 
       - name: Upload coverage artifact
         uses: actions/upload-artifact@v4
@@ -227,6 +234,21 @@ jobs:
           COVERAGE_PATH: coverage-merged.xml
         continue-on-error: true
 
+      - name: Archive merged coverage report
+        uses: actions/upload-artifact@v4
+        with:
+          name: code-coverage-merged
+          path: htmlcov-merged/
+          retention-days: 30
+
+      - name: Comment coverage summary on PR
+        if: github.event_name == 'pull_request'
+        uses: py-cov-action/python-coverage-comment-action@v3
+        with:
+          GITHUB_TOKEN: ${{ github.token }}
+          COVERAGE_PATH: coverage-merged.xml
+        continue-on-error: true
+
   # Integration tests (not sharded - typically fewer and longer running)
   integration-tests:
     name: Integration Tests
@@ -278,21 +300,23 @@ jobs:
           echo "Lint: ${{ needs.lint.result }}"
           echo "Unit Tests (Sharded): ${{ needs.unit-tests-sharded.result }}"
           echo "Integration Tests: ${{ needs.integration-tests.result }}"
-          
+
           if [[ "${{ needs.lint.result }}" != "success" ]]; then
             echo "❌ Linting failed"
             exit 1
           fi
-          
+
+          # unit-tests-sharded is a matrix job; treat anything other than success as failure.
+          # (If you later allow continue-on-error for specific shards, change this gate.)
           if [[ "${{ needs.unit-tests-sharded.result }}" != "success" ]]; then
-            echo "❌ Unit tests failed"
+            echo "❌ Unit tests failed (at least one shard failed or was cancelled)"
             exit 1
           fi
-          
+
           if [[ "${{ needs.integration-tests.result }}" == "failure" ]]; then
             echo "⚠️ Integration tests failed (non-blocking)"
           fi
-          
+
           echo "✅ All required tests passed!"
 
   structure-validation:

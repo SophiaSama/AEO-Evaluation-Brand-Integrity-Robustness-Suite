@@ -160,40 +160,11 @@ jobs:
           pip-licenses --format=markdown --output-file=licenses.md
           
           echo "### 📄 License Summary" >> $GITHUB_STEP_SUMMARY
-          python -c "
-          import json
-          from collections import Counter
-          
-          data = json.load(open('licenses.json'))
-          licenses = [pkg['License'] for pkg in data]
-          license_counts = Counter(licenses)
-          
-          print(f'Total packages: {len(data)}')
-          print('')
-          print('License distribution:')
-          for lic, count in license_counts.most_common(10):
-              print(f'- {lic}: {count}')
-          " >> $GITHUB_STEP_SUMMARY
+          python -c "import json; from collections import Counter; data=json.load(open('licenses.json')); licenses=[pkg['License'] for pkg in data]; license_counts=Counter(licenses); print(f'Total packages: {len(data)}'); print(''); print('License distribution:'); [print(f'- {lic}: {count}') for lic, count in license_counts.most_common(10)]" >> $GITHUB_STEP_SUMMARY
 
       - name: Check for incompatible licenses
         run: |
-          python -c "
-          import json
-          
-          # Define problematic licenses (adjust based on your needs)
-          PROBLEMATIC = ['GPL-3.0', 'AGPL-3.0', 'LGPL-3.0', 'Commercial', 'UNKNOWN']
-          
-          data = json.load(open('licenses.json'))
-          issues = [pkg for pkg in data if any(prob in pkg['License'] for prob in PROBLEMATIC)]
-          
-          if issues:
-              print('⚠️ Found packages with potentially problematic licenses:')
-              for pkg in issues:
-                  print(f'  - {pkg[\"Name\"]}: {pkg[\"License\"]}')
-              # Don't fail, just warn
-          else:
-              print('✓ All licenses are compatible')
-          "
+          python -c "import json; PROBLEMATIC=['GPL-3.0','AGPL-3.0','LGPL-3.0','Commercial','UNKNOWN']; data=json.load(open('licenses.json')); issues=[pkg for pkg in data if any(prob in (pkg.get('License') or '') for prob in PROBLEMATIC)]; print('⚠️ Found packages with potentially problematic licenses:' if issues else '✓ All licenses are compatible'); [print(f\"  - {pkg.get('Name','?')}: {pkg.get('License','?')}\") for pkg in issues]"
 
       - name: Upload license reports
         uses: actions/upload-artifact@v4

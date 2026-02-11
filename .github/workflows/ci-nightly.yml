@@ -2,8 +2,8 @@ name: BIRS Nightly Extended Tests
 
 on:
   schedule:
-    # Run nightly at 1 AM UTC
-    - cron: '0 1 * * *'
+    # Run nightly at 2 AM UTC+8
+    - cron: '0 18 * * *'
   workflow_dispatch:
     inputs:
       run_deepeval:
