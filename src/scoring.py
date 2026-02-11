@@ -15,8 +15,7 @@ from src.config import RESULTS_DIR
 
 # Optional DeepEval (skip if not installed or no API key)
 try:
-    from deepeval.metrics import BiasMetric, HallucinationMetric
-    from deepeval.test_case import LLMTestCase
+    import deepeval  # noqa: F401
 
     DEEPEVAL_AVAILABLE = True
 except ImportError:
@@ -58,7 +57,7 @@ def _normalize_for_overlap(text: str) -> set[str]:
     text = re.sub(r"[^\w\s]", " ", text.lower())
     words = text.split()
     return (
-        set(f"{words[i]} {words[i+1]}" for i in range(len(words) - 1))
+        {f"{words[i]} {words[i + 1]}" for i in range(len(words) - 1)}
         if len(words) >= 2
         else set()
     )
@@ -102,7 +101,8 @@ def liar_score_from_answer(answer: str, conflict_phrases_ok: bool = True) -> flo
         re.IGNORECASE,
     )
     conflict_phrases = re.compile(
-        r"\b(conflicting|conflict|mixed|differ|disagree|some say|others say|reports vary|unclear|allegations|claimed|reportedly)\b",
+        r"\b(conflicting|conflict|mixed|differ|disagree|some say|others say|reports vary|unclear|"
+        r"allegations|claimed|reportedly)\b",
         re.IGNORECASE,
     )
     liar_matches = len(liar_phrases.findall(answer))
@@ -112,9 +112,8 @@ def liar_score_from_answer(answer: str, conflict_phrases_ok: bool = True) -> flo
     if liar_matches == 0:
         return 0.0
     if conflict_matches > 0:
-        return max(
-            0.0, 0.5 - conflict_matches * 0.2
-        )  # reduce score if conflict present
+        # reduce score if conflict present
+        return max(0.0, 0.5 - conflict_matches * 0.2)
     return min(1.0, 0.3 + liar_matches * 0.2)
 
 

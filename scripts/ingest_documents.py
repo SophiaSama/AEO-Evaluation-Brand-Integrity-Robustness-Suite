@@ -8,11 +8,6 @@ Run from project root: python scripts/ingest_documents.py
 """
 
 import json
-import sys
-from pathlib import Path
-
-PROJECT_ROOT = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(PROJECT_ROOT))
 
 from chromadb import PersistentClient
 from sentence_transformers import SentenceTransformer
@@ -128,7 +123,7 @@ def main():
     print("✓ Ingestion complete!")
     print("=" * 60)
     print(f"\nChromaDB location: {CHROMA_DIR}")
-    print(f"Collections created:")
+    print("Collections created:")
     print(f"  - {COLLECTION_CLEAN}: {len(clean_docs)} documents (clean only)")
     print(f"  - {COLLECTION_POISONED}: {len(combined_docs)} documents (clean + poison)")
     print("\nNext steps:")

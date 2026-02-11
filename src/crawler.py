@@ -18,7 +18,7 @@ import trafilatura
 from duckduckgo_search import DDGS
 from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
 
-from src.config import CLEAN_DIR, DOCUMENTS_JSON
+from src.config import CLEAN_DIR
 
 _sentiment_analyzer = None
 
@@ -162,7 +162,10 @@ def crawl_brand(
             continue
         if warn_negative and compound < -0.3:
             print(
-                f"  [warn] Negative content (sentiment {compound:.2f}) from {url[:60]}... — consider --min-sentiment to filter"
+                (
+                    f"  [warn] Negative content (sentiment {compound:.2f}) from "
+                    f"{url[:60]}... — consider --min-sentiment to filter"
+                )
             )
 
         # Truncate to ~15k chars per doc to keep chunks manageable
