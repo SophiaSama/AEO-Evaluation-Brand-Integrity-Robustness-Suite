@@ -25,3 +25,6 @@ htmlcov/
 
 # Docs
 docs/*
+
+# Static type checking
+.mypy_cache/

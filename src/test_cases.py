@@ -284,9 +284,7 @@ def run_birs_06(brand: str | None = None) -> TestResult:
         "stolen",
     )
     official_contexts = [
-        c
-        for c in contexts
-        if not any(k in c.lower() for k in poison_keywords)
+        c for c in contexts if not any(k in c.lower() for k in poison_keywords)
     ]
     poison_contexts = [
         c for c in contexts if any(k in c.lower() for k in poison_keywords)
