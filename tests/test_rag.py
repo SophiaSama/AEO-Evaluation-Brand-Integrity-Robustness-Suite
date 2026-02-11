@@ -1,9 +1,12 @@
 """Tests for RAG module (structure and config; full RAG requires Ollama + Chroma)."""
 
+import pytest
+
 from src.config import COLLECTION_CLEAN
 from src.rag import get_retriever
 
 
+@pytest.mark.integration
 def test_get_retriever_when_chroma_exists(tmp_path, monkeypatch):
     """Ensure retriever can be built; if Chroma isn't populated, ingest first."""
     chroma_dir = tmp_path / "chroma_birs"
