@@ -22,14 +22,14 @@ from src.config import (
     RAG_TOP_K,
 )
 
-RAG_PROMPT = """You are a helpful assistant. Answer the user's question based ONLY on the following context. If the context does not contain enough information, say so. Do not make up facts or numbers.
-
-Context:
-{context}
-
-Question: {question}
-
-Answer:"""
+RAG_PROMPT = (
+    "You are a helpful assistant. Answer the user's question based ONLY on the following context. "
+    "If the context does not contain enough information, say so. Do not make up facts or numbers.\n\n"
+    "Context:\n"
+    "{context}\n\n"
+    "Question: {question}\n\n"
+    "Answer:"
+)
 
 
 def get_retriever(collection_name: str):

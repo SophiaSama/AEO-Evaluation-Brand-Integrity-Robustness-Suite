@@ -1,9 +1,6 @@
 """Test visualization module."""
 
 import json
-from pathlib import Path
-
-import pytest
 
 from src.visualize import _get_overall_status, _get_status_class, generate_html_report
 
@@ -111,5 +108,4 @@ def test_generate_html_report_custom_output(tmp_path):
     assert custom_output.exists()
 
 
-if __name__ == "__main__":
-    pytest.main([__file__, "-v"])
+# Note: tests are run via `pytest`, not by executing this file directly.

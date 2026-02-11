@@ -3,8 +3,6 @@
 import tempfile
 from pathlib import Path
 
-import pytest
-
 from src.crawler import MANUS_SEED_URLS, slug_from_url
 
 

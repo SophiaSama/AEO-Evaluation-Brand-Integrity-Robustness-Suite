@@ -86,7 +86,10 @@ Examples:
         type=float,
         default=None,
         metavar="FLOAT",
-        help="Only save pages with VADER compound sentiment >= this (e.g. 0 or -0.2). Use when real data is often negative.",
+        help=(
+            "Only save pages with VADER compound sentiment >= this (e.g. 0 or -0.2). "
+            "Use when real data is often negative."
+        ),
     )
     p.add_argument(
         "--no-warn-negative",
@@ -107,7 +110,8 @@ Examples:
         if args.brand in seed_config:
             urls_to_crawl = seed_config[args.brand]
             print(
-                f"Using {len(urls_to_crawl)} seed URLs from {args.seed_urls_file} for brand '{args.brand}'"
+                f"Using {len(urls_to_crawl)} seed URLs from {args.seed_urls_file} "
+                f"for brand '{args.brand}'"
             )
         else:
             print(

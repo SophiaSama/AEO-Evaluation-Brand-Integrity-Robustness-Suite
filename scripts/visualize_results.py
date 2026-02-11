@@ -90,7 +90,7 @@ Examples:
                 import webbrowser
 
                 webbrowser.open(f"file://{html_path.absolute()}")
-                print(f"🌐 Opened in browser")
+                print("\U0001f310 Opened in browser")
 
         except Exception as e:
             print(f"❌ Error processing {input_path}: {e}")
@@ -101,7 +101,7 @@ Examples:
 
     # Summary
     if success_count > 0:
-        print(f"\n🎉 Successfully generated {success_count} report(s)")
+        print(f"\n\U0001f389 Successfully generated {success_count} report(s)")
         return 0
     else:
         print("\n❌ No reports generated")

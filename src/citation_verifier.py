@@ -4,10 +4,9 @@ Based on AEO Audit Guidelines - Rule 1: Authority Handshake (Provenance).
 """
 
 import re
-from typing import Any
 
 try:
-    from sentence_transformers import CrossEncoder
+    import sentence_transformers  # noqa: F401
 
     CROSS_ENCODER_AVAILABLE = True
 except ImportError:

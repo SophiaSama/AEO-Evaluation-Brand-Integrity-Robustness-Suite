@@ -10,7 +10,6 @@ Usage:
 """
 
 import argparse
-import os
 import subprocess
 import sys
 import time
@@ -141,7 +140,7 @@ Examples:
             check=True,
         )
         print(f"[Python] Using: {result.stdout.strip()}")
-    except Exception as e:
+    except Exception:
         print(f"[ERROR] Python executable '{args.python_version}' not found")
         return 1
 

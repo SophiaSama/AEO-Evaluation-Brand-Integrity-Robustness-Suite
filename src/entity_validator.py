@@ -6,7 +6,6 @@ Based on AEO Audit Guidelines - Rule 2: NAP+E Consistency.
 import json
 import re
 from difflib import SequenceMatcher
-from pathlib import Path
 from typing import Any
 
 from src.config import PROJECT_ROOT

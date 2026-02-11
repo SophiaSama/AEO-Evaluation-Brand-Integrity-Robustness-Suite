@@ -1,7 +1,5 @@
 """Unit tests for test case logic (BIRS-01/02/03) using mock answers."""
 
-import pytest
-
 from src.test_cases import (
     CONFLICT_PHRASES,
     HALLUCINATED_NUMBER,
