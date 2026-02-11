@@ -61,12 +61,14 @@ jobs:
             fi
           fi
 
-          echo "Using $SHARD_COUNT shards"
-          echo "shard-count=$SHARD_COUNT" >> "$GITHUB_OUTPUT"
-
-          # Emit VALID JSON for fromJson(...)
           GROUPS=$(python -c "import json,sys; n=int(sys.argv[1]); print(json.dumps(list(range(1,n+1))))" "$SHARD_COUNT")
-          echo "test-groups=$GROUPS" >> "$GITHUB_OUTPUT"
+          echo "Using $SHARD_COUNT shards"
+          echo "Generated test groups: $GROUPS"
+
+          {
+            echo "shard-count=$SHARD_COUNT"
+            echo "test-groups=$GROUPS"
+          } >> "$GITHUB_OUTPUT"
 
   lint:
     name: Lint & Format Check
