@@ -36,6 +36,11 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
       - name: Calculate optimal shards
         id: calculate
         shell: bash
@@ -43,10 +48,10 @@ jobs:
           set -euo pipefail
 
           # Use Python for counting + JSON generation (avoids pipefail edge cases)
-          TEST_COUNT=$(python -c "from pathlib import Path; print(len(list(Path('tests').glob('test_*.py'))))")
+          TEST_COUNT=$(python3 -c "from pathlib import Path; print(len(list(Path('tests').glob('test_*.py'))))")
           echo "Found $TEST_COUNT test files"
 
-          INPUT_SHARDS="${{ github.event.inputs.shard-count }}"
+          INPUT_SHARDS="${{ github.event.inputs.shard-count || '' }}"
           if [ -n "$INPUT_SHARDS" ]; then
             SHARD_COUNT="$INPUT_SHARDS"
           else
@@ -58,7 +63,7 @@ jobs:
             fi
           fi
 
-          GROUPS=$(python -c "import json,sys; n=int(sys.argv[1]); print(json.dumps(list(range(1,n+1))))" "$SHARD_COUNT")
+          GROUPS=$(python3 -c "import json,sys; n=int(sys.argv[1]); print(json.dumps(list(range(1,n+1))))" "$SHARD_COUNT")
           echo "Using $SHARD_COUNT shards"
           echo "Generated test groups: $GROUPS"
 
@@ -143,7 +148,7 @@ jobs:
         env:
           PYTHONPATH: ${{ github.workspace }}
         run: |
-          set -e
+          # Do NOT use set -e here — we need to capture pytest's exit code
           pytest tests/ -v \
             --cov=src \
             --cov-report=term-missing \
@@ -153,13 +158,13 @@ jobs:
             --group ${{ matrix.shard }} \
             --store-durations \
             --durations-path=.test_durations \
-            -m "not integration and not e2e"
-          code=$?
-          if [ $code -eq 5 ]; then
+            -m "not integration and not e2e" || code=$?
+          code=${code:-0}
+          if [ "$code" -eq 5 ]; then
             echo "No tests selected for this shard (pytest exit 5); treating as success."
             exit 0
           fi
-          exit $code
+          exit "$code"
 
       - name: Upload coverage artifact
         uses: actions/upload-artifact@v4
@@ -219,21 +224,6 @@ jobs:
           file: ./coverage-merged.xml
           flags: unittests-sharded
           name: codecov-sharded
-        continue-on-error: true
-
-      - name: Archive merged coverage report
-        uses: actions/upload-artifact@v4
-        with:
-          name: code-coverage-merged
-          path: htmlcov-merged/
-          retention-days: 30
-
-      - name: Comment coverage summary on PR
-        if: github.event_name == 'pull_request'
-        uses: py-cov-action/python-coverage-comment-action@v3
-        with:
-          GITHUB_TOKEN: ${{ github.token }}
-          COVERAGE_PATH: coverage-merged.xml
         continue-on-error: true
 
       - name: Archive merged coverage report
