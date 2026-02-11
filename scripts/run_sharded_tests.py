@@ -19,12 +19,13 @@ from pathlib import Path
 # Fix Unicode support on Windows
 if sys.platform == "win32":
     try:
-        # Try to set UTF-8 encoding for Windows console
-        import codecs
-
-        sys.stdout = codecs.getwriter("utf-8")(sys.stdout.buffer, "strict")
-        sys.stderr = codecs.getwriter("utf-8")(sys.stderr.buffer, "strict")
-    except BaseException:
+        # Prefer stdlib reconfigure (Python 3.7+); may be missing on some stream types
+        if hasattr(sys.stdout, "reconfigure"):
+            sys.stdout.reconfigure(encoding="utf-8", errors="strict")
+        if hasattr(sys.stderr, "reconfigure"):
+            sys.stderr.reconfigure(encoding="utf-8", errors="strict")
+    except Exception:
+        # Fall back silently if not supported (e.g., redirected streams)
         pass
 
 

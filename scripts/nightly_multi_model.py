@@ -15,7 +15,6 @@ def main() -> None:
         extended_tests=False,
         run_aeo_audit=False,
         run_deepeval=False,
-        multi_model=True,
     )
 
     with open(results_path) as f:

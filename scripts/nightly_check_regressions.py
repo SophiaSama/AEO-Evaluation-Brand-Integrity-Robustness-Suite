@@ -17,12 +17,12 @@ MIN_ACCEPTABLE_SCORES = {
 
 
 def main() -> None:
-    with open("extended_results.json") as f:
-        data = json.load(f)
+    with open("extended_results.json", "r", encoding="utf-8") as fp:
+        data = json.load(fp)
 
     test_results = data.get("test_results", {})
 
-    failures = []
+    failures: list[str] = []
     for test_id, min_score in MIN_ACCEPTABLE_SCORES.items():
         result = test_results.get(test_id)
         if not result:
@@ -39,8 +39,8 @@ def main() -> None:
 
     if failures:
         print("❌ Regressions detected:")
-        for f in failures:
-            print(f"- {f}")
+        for failure in failures:
+            print(f"- {failure}")
         raise SystemExit(1)
 
     print("✅ No regressions detected (all gates passed)")
