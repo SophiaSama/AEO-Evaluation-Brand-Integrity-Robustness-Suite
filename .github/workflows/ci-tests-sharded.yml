@@ -72,7 +72,10 @@ jobs:
           echo "DEBUG: SHARD_COUNT=$SHARD_COUNT"
           
           # Generate test groups JSON array
-          GROUPS=$(python3 -c "import json,sys; n=int(sys.argv[1]); print(json.dumps(list(range(1,n+1))))" "$SHARD_COUNT")
+          GROUPS=$(python3 -c "import json,sys; n=int(sys.argv[1]); print(json.dumps(list(range(1,n+1))))" "$SHARD_COUNT") || {
+            echo "ERROR: Failed to generate test groups with SHARD_COUNT=$SHARD_COUNT"
+            exit 1
+          }
           echo "Using $SHARD_COUNT shards"
           echo "Generated test groups: $GROUPS"
 
@@ -81,6 +84,9 @@ jobs:
             echo "ERROR: GITHUB_OUTPUT is not set"
             exit 1
           fi
+          
+          echo "DEBUG: GITHUB_OUTPUT=$GITHUB_OUTPUT"
+          echo "DEBUG: Writing outputs to GITHUB_OUTPUT"
 
           # Write outputs with proper GitHub Actions format (EOF delimiter for special chars)
           {
@@ -89,6 +95,8 @@ jobs:
             echo "$GROUPS"
             echo "EOF"
           } >> "$GITHUB_OUTPUT"
+          
+          echo "DEBUG: Successfully wrote outputs"
 
   lint:
     name: Lint & Format Check
