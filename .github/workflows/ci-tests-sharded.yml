@@ -72,10 +72,11 @@ jobs:
           echo "DEBUG: SHARD_COUNT=$SHARD_COUNT"
           
           # Generate test groups JSON array [1, 2, ..., n] using bash
+          # Important: Must be valid JSON with proper spacing
           GROUPS="["
           for i in $(seq 1 $SHARD_COUNT); do
             if [ $i -gt 1 ]; then
-              GROUPS="$GROUPS,"
+              GROUPS="$GROUPS, "
             fi
             GROUPS="$GROUPS$i"
           done
@@ -93,13 +94,10 @@ jobs:
           echo "DEBUG: GITHUB_OUTPUT=$GITHUB_OUTPUT"
           echo "DEBUG: Writing outputs to GITHUB_OUTPUT"
 
-          # Write outputs with proper GitHub Actions format (EOF delimiter for special chars)
-          {
-            echo "shard-count=$SHARD_COUNT"
-            echo "test-groups<<EOF"
-            echo "$GROUPS"
-            echo "EOF"
-          } >> "$GITHUB_OUTPUT"
+          # Write outputs with proper GitHub Actions format
+          # Use simple single-line format for JSON array (no EOF delimiter needed)
+          echo "shard-count=$SHARD_COUNT" >> "$GITHUB_OUTPUT"
+          echo "test-groups=$GROUPS" >> "$GITHUB_OUTPUT"
           
           echo "DEBUG: Successfully wrote outputs"
 
@@ -161,6 +159,17 @@ jobs:
           pip install -r requirements.txt
           pip install pytest pytest-cov pytest-xdist pytest-split
 
+      - name: Verify test environment
+        run: |
+          echo "Python version:"
+          python --version
+          echo "Pytest version:"
+          pytest --version
+          echo "Pytest plugins:"
+          pytest --version --verbose
+          echo "Test files:"
+          ls -la tests/test_*.py || echo "No test files found"
+
       - name: Cache test durations
         uses: actions/cache@v4
         with:
@@ -175,6 +184,7 @@ jobs:
           PYTHONPATH: ${{ github.workspace }}
         run: |
           # Do NOT use set -e here — we need to capture pytest's exit code
+          echo "Running tests for shard ${{ matrix.shard }}/${{ needs.test-matrix-setup.outputs.shard-count }} on Python ${{ matrix.python-version }}"
           pytest tests/ -v \
             --cov=src \
             --cov-report=term-missing \
@@ -186,11 +196,17 @@ jobs:
             --durations-path=.test_durations \
             -m "not integration and not e2e" || code=$?
           code=${code:-0}
+          echo "Pytest exit code: $code"
           if [ "$code" -eq 5 ]; then
-            echo "No tests selected for this shard (pytest exit 5); treating as success."
+            echo "⚠️ No tests selected for this shard (pytest exit 5); treating as success."
+            exit 0
+          elif [ "$code" -ne 0 ]; then
+            echo "❌ Tests failed with exit code $code"
+            exit "$code"
+          else
+            echo "✅ Tests passed"
             exit 0
           fi
-          exit "$code"
 
       - name: Upload coverage artifact
         uses: actions/upload-artifact@v4
