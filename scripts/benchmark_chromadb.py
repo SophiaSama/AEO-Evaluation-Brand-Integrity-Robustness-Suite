@@ -5,13 +5,18 @@ Prints JSON to stdout.
 """
 
 import json
+import sys
 import time
 from pathlib import Path
 
-from langchain_community.embeddings import HuggingFaceEmbeddings
-from langchain_community.vectorstores import Chroma
+# Add project root to path to allow importing from src
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(PROJECT_ROOT))
 
-from src.config import CHROMA_DIR
+from langchain_community.embeddings import HuggingFaceEmbeddings  # noqa: E402
+from langchain_community.vectorstores import Chroma  # noqa: E402
+
+from src.config import CHROMA_DIR  # noqa: E402
 
 
 def main() -> None:
