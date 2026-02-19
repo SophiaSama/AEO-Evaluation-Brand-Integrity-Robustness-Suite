@@ -71,11 +71,34 @@ jobs:
 
           echo "DEBUG: SHARD_COUNT=$SHARD_COUNT"
           
-          # Generate test groups JSON array
-          GROUPS=$(python3 -c "import json,sys; n=int(sys.argv[1]); print(json.dumps(list(range(1,n+1))))" "$SHARD_COUNT") || {
-            echo "ERROR: Failed to generate test groups with SHARD_COUNT=$SHARD_COUNT"
+          # Generate test groups JSON array [1, 2, ..., n]
+          # Try Python first, fallback to bash if needed
+          if command -v python3 &> /dev/null; then
+            PYTHON_CMD=python3
+          elif command -v python &> /dev/null; then
+            PYTHON_CMD=python
+          else
+            echo "ERROR: No Python interpreter found"
             exit 1
-          }
+          fi
+          
+          echo "DEBUG: Using Python command: $PYTHON_CMD"
+          GROUPS=$($PYTHON_CMD -c "import json; import sys; n=int(sys.argv[1]); print(json.dumps(list(range(1,n+1))))" "$SHARD_COUNT" 2>&1) 
+          
+          if [ $? -ne 0 ]; then
+            echo "WARNING: Python command failed, using bash fallback"
+            echo "Python error: $GROUPS"
+            # Fallback: build JSON array manually in bash
+            GROUPS="["
+            for i in $(seq 1 $SHARD_COUNT); do
+              if [ $i -gt 1 ]; then
+                GROUPS="$GROUPS,"
+              fi
+              GROUPS="$GROUPS$i"
+            done
+            GROUPS="$GROUPS]"
+          fi
+          
           echo "Using $SHARD_COUNT shards"
           echo "Generated test groups: $GROUPS"
 
