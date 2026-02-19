@@ -73,7 +73,11 @@ jobs:
           
           # Generate test groups JSON array [1,2,...,n] using bash
           # Important: No spaces in JSON for GitHub Actions compatibility
-          GROUPS=$(python3 -c "print('[' + ','.join(str(i) for i in range(1, $SHARD_COUNT + 1)) + ']')")
+          GROUPS=$(python3 - <<EOF
+          n = $SHARD_COUNT
+          print("[" + ",".join(str(i) for i in range(1, n + 1)) + "]")
+          EOF
+          )
           
           echo "Using $SHARD_COUNT shards"
           echo "Generated test groups: $GROUPS"
