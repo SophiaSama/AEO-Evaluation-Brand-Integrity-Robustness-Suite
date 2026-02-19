@@ -97,10 +97,8 @@ jobs:
 
           # Write outputs with proper GitHub Actions format
           # Use simple single-line format for JSON array
-          {
-            echo "shard-count=$SHARD_COUNT"
-            echo "test-groups=$GROUPS"
-          } >> "$GITHUB_OUTPUT"
+          echo "shard-count=${SHARD_COUNT}" >> "$GITHUB_OUTPUT"
+          echo "test-groups=${GROUPS}" >> "$GITHUB_OUTPUT"
           
           echo "DEBUG: Successfully wrote outputs"
           
