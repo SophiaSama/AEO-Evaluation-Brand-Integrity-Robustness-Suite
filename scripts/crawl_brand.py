@@ -12,23 +12,17 @@ URL sources (in order of priority):
 
 import argparse
 import json
+import os
 import sys
 from pathlib import Path
 
+# Add project root to path to allow importing from src
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
-
-# Make `src` importable when running `python scripts/crawl_brand.py` (e.g. in CI)
-# without requiring an editable install.
-if str(PROJECT_ROOT) not in sys.path:
-    sys.path.insert(0, str(PROJECT_ROOT))
-
-# Also set PYTHONPATH for any subprocesses started by this script.
-import os
-
+sys.path.insert(0, str(PROJECT_ROOT))
 os.environ.setdefault("PYTHONPATH", str(PROJECT_ROOT))
 
-from src.config import CLEAN_DIR, DOCUMENTS_JSON
-from src.crawler import crawl_brand
+from src.config import CLEAN_DIR, DOCUMENTS_JSON  # noqa: E402
+from src.crawler import crawl_brand  # noqa: E402
 
 
 def load_seed_urls_from_file(filepath: Path) -> dict[str, list[str]]:

@@ -69,9 +69,18 @@ jobs:
             fi
           fi
 
+          echo "DEBUG: SHARD_COUNT=$SHARD_COUNT"
+          
+          # Generate test groups JSON array
           GROUPS=$(python3 -c "import json,sys; n=int(sys.argv[1]); print(json.dumps(list(range(1,n+1))))" "$SHARD_COUNT")
           echo "Using $SHARD_COUNT shards"
           echo "Generated test groups: $GROUPS"
+
+          # Verify GITHUB_OUTPUT is set
+          if [ -z "$GITHUB_OUTPUT" ]; then
+            echo "ERROR: GITHUB_OUTPUT is not set"
+            exit 1
+          fi
 
           # Write outputs with proper GitHub Actions format (EOF delimiter for special chars)
           {
