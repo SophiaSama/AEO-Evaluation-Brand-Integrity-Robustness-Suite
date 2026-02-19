@@ -128,8 +128,19 @@ jobs:
           python -c "
           import json
           data = json.load(open('embedding_benchmark.json'))
+
+          def get_metric(metrics: dict, *keys, default=None):
+              for k in keys:
+                  if k in metrics:
+                      return metrics[k]
+              return default
+
           for size, metrics in data.items():
-              print(f\"| {size} | {metrics['avg_time_ms']}ms | {metrics['text_length']} chars | {metrics['embedding_dim']} |\")
+              avg_time = get_metric(metrics, 'avg_time_ms', 'latency_ms', default='N/A')
+              text_len = get_metric(metrics, 'text_length', 'text_len', default='N/A')
+              emb_dim = get_metric(metrics, 'embedding_dim', default='N/A')
+              suffix = 'ms' if isinstance(avg_time, (int, float)) else ''
+              print(f"| {size} | {avg_time}{suffix} | {text_len} chars | {emb_dim} |")
           " >> $GITHUB_STEP_SUMMARY
 
       - name: Upload embedding benchmark

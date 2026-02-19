@@ -53,10 +53,13 @@ jobs:
           echo "Found $TEST_COUNT test files"
 
           # Handle optional workflow_dispatch input; default to empty for push/PR triggers
-          INPUT_SHARDS="${{ github.event.inputs.shard-count }}"
-          
-          if [ -n "${INPUT_SHARDS}" ]; then
-            SHARD_COUNT="${INPUT_SHARDS}"
+          INPUT_SHARDS=''
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            INPUT_SHARDS="${{ github.event.inputs.shard-count }}"
+          fi
+
+          if [ -n "$INPUT_SHARDS" ]; then
+            SHARD_COUNT="$INPUT_SHARDS"
           else
             SHARD_COUNT=$((TEST_COUNT / 2))
             if [ "$SHARD_COUNT" -lt 2 ]; then
