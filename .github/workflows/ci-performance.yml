@@ -125,7 +125,7 @@ jobs:
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "| Text Size | Avg Time | Text Length | Embedding Dim |" >> $GITHUB_STEP_SUMMARY
           echo "|-----------|----------|-------------|---------------|" >> $GITHUB_STEP_SUMMARY
-          python -c "
+          python - << 'PYTHON_EOF'
           import json
           data = json.load(open('embedding_benchmark.json'))
 
@@ -141,7 +141,7 @@ jobs:
               emb_dim = get_metric(metrics, 'embedding_dim', default='N/A')
               suffix = 'ms' if isinstance(avg_time, (int, float)) else ''
               print(f"| {size} | {avg_time}{suffix} | {text_len} chars | {emb_dim} |")
-          " >> $GITHUB_STEP_SUMMARY
+          PYTHON_EOF
 
       - name: Upload embedding benchmark
         uses: actions/upload-artifact@v4
