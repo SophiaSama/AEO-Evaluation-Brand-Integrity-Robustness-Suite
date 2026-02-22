@@ -36,11 +36,6 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Setup Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.11'
-
       - name: Calculate optimal shards
         id: calculate
         shell: bash
@@ -49,30 +44,45 @@ jobs:
           set -eo pipefail
           set -x  # Add debugging to see exactly which command fails
 
-          # Use Python for counting + JSON generation (avoids pipefail edge cases)
-          TEST_COUNT=$(python3 -c "from pathlib import Path; print(len(list(Path('tests').glob('test_*.py'))))")
+          # Count test files safely with error handling
+          TEST_COUNT=$(python3 -c "from pathlib import Path; print(len(list(Path('tests').glob('test_*.py'))))" 2>/dev/null || echo "0")
           echo "Found $TEST_COUNT test files"
 
-          # Handle optional workflow_dispatch input; default to empty for push/PR triggers
-          INPUT_SHARDS=''
-          if [ "push" = "workflow_dispatch" ]; then
-            INPUT_SHARDS=""
+          # Handle workflow_dispatch input correctly
+          INPUT_SHARDS=""
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            INPUT_SHARDS="${{ github.event.inputs.shard-count }}"
           fi
 
+          # Determine final shard count
           if [ -n "$INPUT_SHARDS" ]; then
+            # Validate it's a number
+            if ! [[ "$INPUT_SHARDS" =~ ^[0-9]+$ ]]; then
+              echo "ERROR: Invalid shard count input: $INPUT_SHARDS"
+              exit 1
+            fi
             SHARD_COUNT="$INPUT_SHARDS"
           else
+            # Auto-calculate with safe limits
             SHARD_COUNT=$((TEST_COUNT / 2))
             if [ "$SHARD_COUNT" -lt 2 ]; then
               SHARD_COUNT=2
-            elif [ "$SHARD_COUNT" -gt 4 ]; then
-              SHARD_COUNT=4
+            elif [ "$SHARD_COUNT" -gt 8 ]; then
+              SHARD_COUNT=8
             fi
+          fi
+
+          # Ensure we don't exceed GitHub's practical limits
+          if [ "$SHARD_COUNT" -lt 1 ]; then
+            SHARD_COUNT=1
+          elif [ "$SHARD_COUNT" -gt 8 ]; then
+            echo "WARNING: Capping shard count at 8 to avoid matrix limits"
+            SHARD_COUNT=8
           fi
 
           echo "DEBUG: SHARD_COUNT=$SHARD_COUNT"
 
-          # Pure bash solution - avoids heredoc issues entirely
+          # Generate array: [1,2,3,...,N]
           GROUPS="[1"
           for i in $(seq 2 "$SHARD_COUNT"); do
             GROUPS="$GROUPS,$i"
@@ -90,18 +100,16 @@ jobs:
 
           echo "DEBUG: GITHUB_OUTPUT=$GITHUB_OUTPUT"
           echo "DEBUG: Writing outputs to GITHUB_OUTPUT"
-          echo "DEBUG: test-groups value: $GROUPS"
 
           # Write outputs with proper GitHub Actions format
           echo "shard-count=${SHARD_COUNT}" >> "$GITHUB_OUTPUT"
           echo "test-groups=${GROUPS}" >> "$GITHUB_OUTPUT"
 
           echo "DEBUG: Successfully wrote outputs"
-
-          # Verify what was written
           echo "DEBUG: Contents of outputs:"
           echo "  shard-count=$SHARD_COUNT"
           echo "  test-groups=$GROUPS"
+
   lint:
     name: Lint & Format Check
     runs-on: ubuntu-latest
