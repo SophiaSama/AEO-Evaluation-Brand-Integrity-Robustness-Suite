@@ -8,11 +8,19 @@ Run from project root: python scripts/ingest_documents.py
 """
 
 import json
+import os
+import sys
+from pathlib import Path
 
 from chromadb import PersistentClient
 from sentence_transformers import SentenceTransformer
 
-from src.config import (
+# Add project root to path to allow importing from src
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(PROJECT_ROOT))
+os.environ.setdefault("PYTHONPATH", str(PROJECT_ROOT))
+
+from src.config import (  # noqa: E402
     CHROMA_DIR,
     COLLECTION_CLEAN,
     COLLECTION_POISONED,

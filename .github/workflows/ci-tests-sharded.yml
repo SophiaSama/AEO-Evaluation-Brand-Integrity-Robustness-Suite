@@ -36,72 +36,88 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Setup Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.11'
-
       - name: Calculate optimal shards
         id: calculate
         shell: bash
         run: |
           # Don't use -u since GitHub Actions templates can be undefined
           set -eo pipefail
+          set -x  # Add debugging to see exactly which command fails
 
-          # Use Python for counting + JSON generation (avoids pipefail edge cases)
-          TEST_COUNT=$(python3 -c "from pathlib import Path; print(len(list(Path('tests').glob('test_*.py'))))")
+          # Count test files safely with error handling
+          TEST_COUNT=$(python3 -c "from pathlib import Path; print(len(list(Path('tests').glob('test_*.py'))))" 2>/dev/null || echo "0")
           echo "Found $TEST_COUNT test files"
 
-          # Handle optional workflow_dispatch input; default to empty for push/PR triggers
-          INPUT_SHARDS=''
+          # Handle workflow_dispatch input correctly
+          INPUT_SHARDS=""
           if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
             INPUT_SHARDS="${{ github.event.inputs.shard-count }}"
           fi
 
+          # Determine final shard count
           if [ -n "$INPUT_SHARDS" ]; then
+            # Validate it's a number
+            if ! [[ "$INPUT_SHARDS" =~ ^[0-9]+$ ]]; then
+              echo "ERROR: Invalid shard count input: $INPUT_SHARDS"
+              exit 1
+            fi
             SHARD_COUNT="$INPUT_SHARDS"
           else
+            # Auto-calculate with safe limits
             SHARD_COUNT=$((TEST_COUNT / 2))
             if [ "$SHARD_COUNT" -lt 2 ]; then
               SHARD_COUNT=2
-            elif [ "$SHARD_COUNT" -gt 4 ]; then
-              SHARD_COUNT=4
+            elif [ "$SHARD_COUNT" -gt 8 ]; then
+              SHARD_COUNT=8
             fi
           fi
 
+          # Ensure we don't exceed GitHub's practical limits
+          if [ "$SHARD_COUNT" -lt 1 ]; then
+            SHARD_COUNT=1
+          elif [ "$SHARD_COUNT" -gt 8 ]; then
+            echo "WARNING: Capping shard count at 8 to avoid matrix limits"
+            SHARD_COUNT=8
+          fi
+
           echo "DEBUG: SHARD_COUNT=$SHARD_COUNT"
-          
-          # Generate test groups JSON array [1, 2, ..., n] using bash
-          GROUPS="["
-          for i in $(seq 1 $SHARD_COUNT); do
-            if [ $i -gt 1 ]; then
-              GROUPS="$GROUPS,"
-            fi
-            GROUPS="$GROUPS$i"
+
+          # Generate array: [1,2,3,...,N]
+          SHARD_GROUPS="[1"
+          for i in $(seq 2 "$SHARD_COUNT"); do
+            SHARD_GROUPS="$SHARD_GROUPS,$i"
           done
-          GROUPS="$GROUPS]"
-          
+          SHARD_GROUPS="$SHARD_GROUPS]"
+
           echo "Using $SHARD_COUNT shards"
-          echo "Generated test groups: $GROUPS"
+          echo "Generated test groups: $SHARD_GROUPS"
 
           # Verify GITHUB_OUTPUT is set
           if [ -z "$GITHUB_OUTPUT" ]; then
             echo "ERROR: GITHUB_OUTPUT is not set"
             exit 1
           fi
-          
+
           echo "DEBUG: GITHUB_OUTPUT=$GITHUB_OUTPUT"
           echo "DEBUG: Writing outputs to GITHUB_OUTPUT"
 
-          # Write outputs with proper GitHub Actions format (EOF delimiter for special chars)
-          {
-            echo "shard-count=$SHARD_COUNT"
-            echo "test-groups<<EOF"
-            echo "$GROUPS"
-            echo "EOF"
-          } >> "$GITHUB_OUTPUT"
-          
+          # Write outputs with proper GitHub Actions format
+          echo "shard-count=${SHARD_COUNT}" >> "$GITHUB_OUTPUT"
+          echo "test-groups=${SHARD_GROUPS}" >> "$GITHUB_OUTPUT"
+
           echo "DEBUG: Successfully wrote outputs"
+          echo "DEBUG: Contents of outputs:"
+          echo "  shard-count=$SHARD_COUNT"
+          echo "  test-groups=$SHARD_GROUPS"
+
+          # Write a short summary for debugging in the Actions UI
+          if [ -n "$GITHUB_STEP_SUMMARY" ]; then
+            {
+              echo "## Test Matrix"
+              echo "- Shard count: $SHARD_COUNT"
+              echo "- Test groups: $SHARD_GROUPS"
+            } >> "$GITHUB_STEP_SUMMARY"
+          fi
 
   lint:
     name: Lint & Format Check
@@ -136,14 +152,14 @@ jobs:
         continue-on-error: true
 
   unit-tests-sharded:
-    name: Unit Tests Shard ${{ matrix.shard }}/${{ needs.test-matrix-setup.outputs.shard-count }} (Python ${{ matrix.python-version }})
+    name: Unit Tests Shard ${{ matrix.shard }}/${{ needs['test-matrix-setup'].outputs['shard-count'] || '1' }} (Python ${{ matrix.python-version }})
     runs-on: ubuntu-latest
     needs: test-matrix-setup
     strategy:
       fail-fast: false
       matrix:
         python-version: ['3.10', '3.11', '3.12']
-        shard: ${{ fromJson(needs.test-matrix-setup.outputs.test-groups) }}
+        shard: ${{ fromJson(needs['test-matrix-setup'].outputs['test-groups'] || '[1]') }}
     
     steps:
       - name: Checkout code
@@ -161,6 +177,17 @@ jobs:
           pip install -r requirements.txt
           pip install pytest pytest-cov pytest-xdist pytest-split
 
+      - name: Verify test environment
+        run: |
+          echo "Python version:"
+          python --version
+          echo "Pytest version:"
+          pytest --version
+          echo "Pytest plugins:"
+          pytest --version --verbose
+          echo "Test files:"
+          ls -la tests/test_*.py || echo "No test files found"
+
       - name: Cache test durations
         uses: actions/cache@v4
         with:
@@ -170,27 +197,34 @@ jobs:
             test-durations-${{ matrix.python-version }}-
             test-durations-
 
-      - name: Run tests (shard ${{ matrix.shard }}/${{ needs.test-matrix-setup.outputs.shard-count }})
+      - name: Run tests (shard ${{ matrix.shard }}/${{ needs['test-matrix-setup'].outputs['shard-count'] || '1' }})
         env:
           PYTHONPATH: ${{ github.workspace }}
         run: |
           # Do NOT use set -e here — we need to capture pytest's exit code
+          echo "Running tests for shard ${{ matrix.shard }}/${{ needs['test-matrix-setup'].outputs['shard-count'] || '1' }} on Python ${{ matrix.python-version }}"
           pytest tests/ -v \
             --cov=src \
             --cov-report=term-missing \
             --cov-report=xml:coverage-shard-${{ matrix.shard }}.xml \
             --cov-report=html:htmlcov-shard-${{ matrix.shard }} \
-            --splits ${{ needs.test-matrix-setup.outputs.shard-count }} \
+            --splits ${{ needs['test-matrix-setup'].outputs['shard-count'] || '1' }} \
             --group ${{ matrix.shard }} \
             --store-durations \
             --durations-path=.test_durations \
             -m "not integration and not e2e" || code=$?
           code=${code:-0}
+          echo "Pytest exit code: $code"
           if [ "$code" -eq 5 ]; then
             echo "No tests selected for this shard (pytest exit 5); treating as success."
             exit 0
+          elif [ "$code" -ne 0 ]; then
+            echo "Tests failed with exit code $code"
+            exit "$code"
+          else
+            echo "Tests passed"
+            exit 0
           fi
-          exit "$code"
 
       - name: Upload coverage artifact
         uses: actions/upload-artifact@v4
@@ -320,22 +354,22 @@ jobs:
           echo "Integration Tests: ${{ needs.integration-tests.result }}"
 
           if [[ "${{ needs.lint.result }}" != "success" ]]; then
-            echo "❌ Linting failed"
+            echo "Linting failed"
             exit 1
           fi
 
           # unit-tests-shared is a matrix job; treat anything other than success as failure.
           # (If you later allow continue-on-error for specific shards, change this gate.)
           if [[ "${{ needs.unit-tests-sharded.result }}" != "success" ]]; then
-            echo "❌ Unit tests failed (at least one shard failed or was cancelled)"
+            echo "Unit tests failed (at least one shard failed or was cancelled)"
             exit 1
           fi
 
           if [[ "${{ needs.integration-tests.result }}" == "failure" ]]; then
-            echo "⚠️ Integration tests failed (non-blocking)"
+            echo "Integration tests failed (non-blocking)"
           fi
 
-          echo "✅ All required tests passed!"
+          echo "All required tests passed!"
 
   structure-validation:
     name: Validate Project Structure
@@ -348,18 +382,18 @@ jobs:
         run: |
           for dir in src tests docs data scripts .github/workflows; do
             if [ ! -d "$dir" ]; then
-              echo "❌ Missing required directory: $dir"
+              echo "Missing required directory: $dir"
               exit 1
             fi
           done
-          echo "✅ All required directories present"
+          echo "All required directories present"
 
       - name: Validate required files exist
         run: |
           for file in README.md requirements.txt src/config.py src/rag.py; do
             if [ ! -f "$file" ]; then
-              echo "❌ Missing required file: $file"
+              echo "Missing required file: $file"
               exit 1
             fi
           done
-          echo "✅ All required files present"
+          echo "All required files present"
