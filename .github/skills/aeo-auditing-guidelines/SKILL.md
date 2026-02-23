@@ -41,6 +41,10 @@ Test Case: Simulate 10 "poisoned" snippets in a Sandbox RAG. If the Auditor Agen
 |Network|Validate SSL/TLS and DNS entries|dig / nslookup (Python subprocess)
 |Consistency|Run Cosine Similarity on LLM outputs|Scikit-learn (Python)
 
+## Project Lessons Learned
+- Search provider change: DuckDuckGo search renamed to `ddgs`. Use a fallback import to avoid runtime warnings.
+- Extraction robustness: trafilatura can return empty text for some pages; add an HTML text fallback to avoid zero-document crawls.
+
 ## Singapore Compliance (IMDA 2026)
 This skill aligns with the Singapore Model AI Governance Framework (v2026):
 
