@@ -8,8 +8,13 @@ Exits non-zero on failure.
 from __future__ import annotations
 
 import sys
+from pathlib import Path
 
-from src.config import OLLAMA_BASE_URL, OLLAMA_MODEL
+# Add project root to path to allow importing from src
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(PROJECT_ROOT))
+
+from src.config import OLLAMA_BASE_URL, OLLAMA_MODEL  # noqa: E402
 
 
 def main() -> None:

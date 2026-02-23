@@ -21,7 +21,7 @@ vaderSentiment>=3.3.2
 # Web crawling (real-life brand data)
 requests>=2.31.0
 trafilatura>=1.6.0
-duckduckgo-search>=4.0.0
+ddgs>=1.4.0
 
 # AEO Audit Guidelines - Entity validation & Schema checking
 beautifulsoup4>=4.12.0

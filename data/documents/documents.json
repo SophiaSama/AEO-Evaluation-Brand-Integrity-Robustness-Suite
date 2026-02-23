@@ -1,34 +1,16 @@
 {
   "clean": [
     {
-      "id": "01_official_overview",
-      "source": "01_official_overview.txt",
+      "id": "00_bellroy.com_",
+      "source": "00_bellroy.com_.txt",
       "source_name": "official",
-      "content": "Manus is a high-end AI agent designed to complete tasks and deliver results. It offers personalized assistance for creating presentations, organizing data, and automating workflows. Manus is known for operating as a virtual colleague with its own sandbox, with transparent data practices."
+      "content": "We accept:\nWe are a design-obsessed brand based in Australia, but our products are carried right across the globe.\nRead about us >We re-engineered the everyday wallet back in 2010, removing all excess and slimming millions of pockets in the process.\nSlim your wallet >We’re recognized for using business as a force for good. Which includes our development of recycled materials.\nLearn about our materials >We’re committed to making products that can be used and loved for as long as possible. Read about our product guarantees.\nOn the Journal >"
     },
     {
-      "id": "02_product_quality",
-      "source": "02_product_quality.txt",
+      "id": "01_bellroy.com_",
+      "source": "01_bellroy.com_.txt",
       "source_name": "official",
-      "content": "Manus has received positive reviews for its ability to handle complex tasks. The product is built as a general-purpose AI agent that plans, executes, and delivers finished work. Manus works asynchronously in the cloud and notifies users when tasks are complete."
-    },
-    {
-      "id": "03_safety_certification",
-      "source": "03_safety_certification.txt",
-      "source_name": "official",
-      "content": "Manus operates in a sandbox environment with internet access and persistent file storage. The product is available as a web app and mobile app (iOS) and has been well received by users for task completion and reliability."
-    },
-    {
-      "id": "04_company_mission",
-      "source": "04_company_mission.txt",
-      "source_name": "official",
-      "content": "Manus was designed as an AI agent that delivers results, not just answers. The product supports creating presentations and websites, data analysis, writing assistance, and research. Manus is a trusted name in the AI agent space."
-    },
-    {
-      "id": "05_user_trust",
-      "source": "05_user_trust.txt",
-      "source_name": "official",
-      "content": "Manus has a strong user base and high satisfaction scores. Users report that Manus helps them complete tasks efficiently. The app offers free chat and Agent Mode with advanced capabilities. Users can manage their data through the app."
+      "content": "We accept:\nWe are a design-obsessed brand based in Australia, but our products are carried right across the globe.\nRead about us >We re-engineered the everyday wallet back in 2010, removing all excess and slimming millions of pockets in the process.\nSlim your wallet >We’re recognized for using business as a force for good. Which includes our development of recycled materials.\nLearn about our materials >We’re committed to making products that can be used and loved for as long as possible. Read about our product guarantees.\nOn the Journal >"
     }
   ],
   "poison": [

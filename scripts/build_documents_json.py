@@ -14,8 +14,19 @@ All document data should be managed through documents.json directly.
 """
 
 import json
+import sys
+from pathlib import Path
 
-from src.config import CLEAN_DIR, DOCUMENTS_DIR, DOCUMENTS_JSON, POISON_DIR
+# Add project root to path to allow importing from src
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(PROJECT_ROOT))
+
+from src.config import (  # noqa: E402
+    CLEAN_DIR,
+    DOCUMENTS_DIR,
+    DOCUMENTS_JSON,
+    POISON_DIR,
+)
 
 
 def _source_name_from_stem(stem: str) -> str:
