@@ -11,11 +11,20 @@ to only keep neutral/positive pages, or use the bundled synthetic clean docs for
 import re
 import time
 from pathlib import Path
+from typing import TYPE_CHECKING
 from urllib.parse import urlparse
 
 import requests
 import trafilatura
-from duckduckgo_search import DDGS
+from bs4 import BeautifulSoup
+
+if TYPE_CHECKING:
+    from ddgs import DDGS as DDGS  # noqa: F401
+else:
+    try:
+        from ddgs import DDGS
+    except Exception:  # pragma: no cover - fallback for older package name
+        from duckduckgo_search import DDGS  # type: ignore[assignment]
 from vaderSentiment.vaderSentiment import (
     SentimentIntensityAnalyzer,  # type: ignore[import-untyped]
 )
@@ -78,6 +87,13 @@ def fetch_url(url: str) -> str | None:
     text = trafilatura.extract(html, no_fallback=False)
     if text and len(text.strip()) > 100:
         return text.strip()
+    # Last resort: plain HTML text extraction
+    soup = BeautifulSoup(html, "html.parser")
+    for tag in soup(["script", "style", "noscript"]):
+        tag.decompose()
+    text = " ".join(soup.stripped_strings)
+    if text and len(text.strip()) > 200:
+        return text.strip()
     return None
 
 
@@ -89,8 +105,8 @@ def search_brand(brand: str, num_results: int = 10) -> list[str]:
     urls = []
     try:
         with DDGS() as ddgs:
-            for r in ddgs.text(f"{brand} AI", max_results=num_results):
-                u = r.get("href")
+            for r in ddgs.text(f"{brand} official", max_results=num_results):
+                u = r.get("href") or r.get("url") or r.get("link")
                 if u and u.startswith("http"):
                     urls.append(u)
     except Exception:

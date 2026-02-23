@@ -8,11 +8,11 @@ import shutil
 import sys
 from pathlib import Path
 
-from src.config import CHROMA_DIR
-
+# Add project root to path to allow importing from src
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
 
+from src.config import CHROMA_DIR  # noqa: E402
 
 if __name__ == "__main__":
     if CHROMA_DIR.exists():
