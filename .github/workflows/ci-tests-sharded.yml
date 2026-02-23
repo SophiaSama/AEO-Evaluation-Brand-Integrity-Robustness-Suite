@@ -143,14 +143,14 @@ jobs:
         continue-on-error: true
 
   unit-tests-sharded:
-    name: Unit Tests Shard ${{ matrix.shard }}/${{ needs.test-matrix-setup.outputs.shard-count }} (Python ${{ matrix.python-version }})
+    name: Unit Tests Shard ${{ matrix.shard }}/${{ needs['test-matrix-setup'].outputs['shard-count'] }} (Python ${{ matrix.python-version }})
     runs-on: ubuntu-latest
     needs: test-matrix-setup
     strategy:
       fail-fast: false
       matrix:
         python-version: ['3.10', '3.11', '3.12']
-        shard: ${{ fromJson(needs.test-matrix-setup.outputs.test-groups) }}
+        shard: ${{ fromJson(needs['test-matrix-setup'].outputs['test-groups']) }}
     
     steps:
       - name: Checkout code
@@ -188,18 +188,18 @@ jobs:
             test-durations-${{ matrix.python-version }}-
             test-durations-
 
-      - name: Run tests (shard ${{ matrix.shard }}/${{ needs.test-matrix-setup.outputs.shard-count }})
+      - name: Run tests (shard ${{ matrix.shard }}/${{ needs['test-matrix-setup'].outputs['shard-count'] }})
         env:
           PYTHONPATH: ${{ github.workspace }}
         run: |
           # Do NOT use set -e here — we need to capture pytest's exit code
-          echo "Running tests for shard ${{ matrix.shard }}/${{ needs.test-matrix-setup.outputs.shard-count }} on Python ${{ matrix.python-version }}"
+          echo "Running tests for shard ${{ matrix.shard }}/${{ needs['test-matrix-setup'].outputs['shard-count'] }} on Python ${{ matrix.python-version }}"
           pytest tests/ -v \
             --cov=src \
             --cov-report=term-missing \
             --cov-report=xml:coverage-shard-${{ matrix.shard }}.xml \
             --cov-report=html:htmlcov-shard-${{ matrix.shard }} \
-            --splits ${{ needs.test-matrix-setup.outputs.shard-count }} \
+            --splits ${{ needs['test-matrix-setup'].outputs['shard-count'] }} \
             --group ${{ matrix.shard }} \
             --store-durations \
             --durations-path=.test_durations \
