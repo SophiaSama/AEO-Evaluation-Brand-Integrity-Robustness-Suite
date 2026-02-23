@@ -23,6 +23,7 @@ Invoke when:
 
 ## Project Lessons Learned
 - Keep lint tooling consistent with repo scripts (isort/black/flake8) and avoid E402 by placing `sys.path` setup before `src` imports or using `# noqa: E402` when necessary.
+- Avoid shell reserved variable names in CI scripts (e.g., `GROUPS` in bash maps to group IDs); use explicit names like `SHARD_GROUPS` to prevent invalid matrix JSON.
 
 ## Platform Selection
 
