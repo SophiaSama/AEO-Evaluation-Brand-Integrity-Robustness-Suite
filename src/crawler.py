@@ -8,6 +8,7 @@ represent positive/neutral truth and BIRS metrics become hard to interpret. Use 
 to only keep neutral/positive pages, or use the bundled synthetic clean docs for a controlled test.
 """
 
+import hashlib
 import re
 import time
 from pathlib import Path
@@ -164,6 +165,7 @@ def crawl_brand(
         urls = urls[: max_docs + 5]
 
     clean_entries: list[dict] = []
+    seen_hashes: set[str] = set()
     skipped_negative = 0
     for i, url in enumerate(urls):
         if len(clean_entries) >= max_docs:
@@ -189,6 +191,11 @@ def crawl_brand(
         # Truncate to ~15k chars per doc to keep chunks manageable
         if len(text) > 15000:
             text = text[:15000] + "\n\n[Content truncated for length.]"
+        normalized = " ".join(text.split())
+        digest = hashlib.sha256(normalized.encode("utf-8")).hexdigest()
+        if digest in seen_hashes:
+            continue
+        seen_hashes.add(digest)
         source = slug_from_url(url, len(clean_entries))
         clean_entries.append(
             {

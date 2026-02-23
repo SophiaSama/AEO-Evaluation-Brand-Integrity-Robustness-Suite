@@ -24,7 +24,7 @@ htmlcov/
 *.swo
 
 # Docs
-docs/*
+docs/local/*
 
 # Static type checking
 .mypy_cache/
