@@ -67,6 +67,9 @@ jobs:
 - `runs-on`: Runner type (ubuntu-latest, windows-latest, macos-latest)
 - `steps`: Sequential operations (uses actions or run commands)
 
+## Project Lessons Learned
+- Hyphenated job or output names require bracket notation in expressions. Use `needs['job-id'].outputs['output-name']` and `fromJson(needs['job-id'].outputs['output-name'])` to avoid matrix strategy parse errors.
+
 ### Common Triggers
 
 ```yaml

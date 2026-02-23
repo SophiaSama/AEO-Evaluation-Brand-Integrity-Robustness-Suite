@@ -21,6 +21,9 @@ Invoke when:
 - Setting up GitOps automation
 - Migrating from legacy CI systems
 
+## Project Lessons Learned
+- Keep lint tooling consistent with repo scripts (isort/black/flake8) and avoid E402 by placing `sys.path` setup before `src` imports or using `# noqa: E402` when necessary.
+
 ## Platform Selection
 
 **GitHub-hosted** → GitHub Actions (SLSA native, 10K+ actions, OIDC)

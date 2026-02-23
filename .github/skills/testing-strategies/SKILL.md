@@ -66,6 +66,9 @@ The testing pyramid guides test distribution for optimal speed and confidence:
 
 For detailed pyramid guidance, see `references/testing-pyramid.md`.
 
+## Project Lessons Learned
+- Pytest shard runs can exit with code 5 when no tests are selected; treat that as a non-failure in sharded CI.
+
 ## Universal Testing Decision Tree
 
 ### Which Test Type Should I Use?
