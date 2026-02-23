@@ -83,14 +83,14 @@ jobs:
           echo "DEBUG: SHARD_COUNT=$SHARD_COUNT"
 
           # Generate array: [1,2,3,...,N]
-          GROUPS="[1"
+          SHARD_GROUPS="[1"
           for i in $(seq 2 "$SHARD_COUNT"); do
-            GROUPS="$GROUPS,$i"
+            SHARD_GROUPS="$SHARD_GROUPS,$i"
           done
-          GROUPS="$GROUPS]"
+          SHARD_GROUPS="$SHARD_GROUPS]"
 
           echo "Using $SHARD_COUNT shards"
-          echo "Generated test groups: $GROUPS"
+          echo "Generated test groups: $SHARD_GROUPS"
 
           # Verify GITHUB_OUTPUT is set
           if [ -z "$GITHUB_OUTPUT" ]; then
@@ -103,12 +103,21 @@ jobs:
 
           # Write outputs with proper GitHub Actions format
           echo "shard-count=${SHARD_COUNT}" >> "$GITHUB_OUTPUT"
-          echo "test-groups=${GROUPS}" >> "$GITHUB_OUTPUT"
+          echo "test-groups=${SHARD_GROUPS}" >> "$GITHUB_OUTPUT"
 
           echo "DEBUG: Successfully wrote outputs"
           echo "DEBUG: Contents of outputs:"
           echo "  shard-count=$SHARD_COUNT"
-          echo "  test-groups=$GROUPS"
+          echo "  test-groups=$SHARD_GROUPS"
+
+          # Write a short summary for debugging in the Actions UI
+          if [ -n "$GITHUB_STEP_SUMMARY" ]; then
+            {
+              echo "## Test Matrix"
+              echo "- Shard count: $SHARD_COUNT"
+              echo "- Test groups: $SHARD_GROUPS"
+            } >> "$GITHUB_STEP_SUMMARY"
+          fi
 
   lint:
     name: Lint & Format Check
@@ -143,14 +152,14 @@ jobs:
         continue-on-error: true
 
   unit-tests-sharded:
-    name: Unit Tests Shard ${{ matrix.shard }}/${{ needs['test-matrix-setup'].outputs['shard-count'] }} (Python ${{ matrix.python-version }})
+    name: Unit Tests Shard ${{ matrix.shard }}/${{ needs['test-matrix-setup'].outputs['shard-count'] || '1' }} (Python ${{ matrix.python-version }})
     runs-on: ubuntu-latest
     needs: test-matrix-setup
     strategy:
       fail-fast: false
       matrix:
         python-version: ['3.10', '3.11', '3.12']
-        shard: ${{ fromJson(needs['test-matrix-setup'].outputs['test-groups']) }}
+        shard: ${{ fromJson(needs['test-matrix-setup'].outputs['test-groups'] || '[1]') }}
     
     steps:
       - name: Checkout code
@@ -188,18 +197,18 @@ jobs:
             test-durations-${{ matrix.python-version }}-
             test-durations-
 
-      - name: Run tests (shard ${{ matrix.shard }}/${{ needs['test-matrix-setup'].outputs['shard-count'] }})
+      - name: Run tests (shard ${{ matrix.shard }}/${{ needs['test-matrix-setup'].outputs['shard-count'] || '1' }})
         env:
           PYTHONPATH: ${{ github.workspace }}
         run: |
           # Do NOT use set -e here — we need to capture pytest's exit code
-          echo "Running tests for shard ${{ matrix.shard }}/${{ needs['test-matrix-setup'].outputs['shard-count'] }} on Python ${{ matrix.python-version }}"
+          echo "Running tests for shard ${{ matrix.shard }}/${{ needs['test-matrix-setup'].outputs['shard-count'] || '1' }} on Python ${{ matrix.python-version }}"
           pytest tests/ -v \
             --cov=src \
             --cov-report=term-missing \
             --cov-report=xml:coverage-shard-${{ matrix.shard }}.xml \
             --cov-report=html:htmlcov-shard-${{ matrix.shard }} \
-            --splits ${{ needs['test-matrix-setup'].outputs['shard-count'] }} \
+            --splits ${{ needs['test-matrix-setup'].outputs['shard-count'] || '1' }} \
             --group ${{ matrix.shard }} \
             --store-durations \
             --durations-path=.test_durations \
