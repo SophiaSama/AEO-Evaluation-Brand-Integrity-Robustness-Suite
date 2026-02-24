@@ -112,7 +112,9 @@ def test_verify_citation_exception(monkeypatch):
 
 def test_citation_veracity_score_with_claims(monkeypatch):
     monkeypatch.setattr(cv, "CROSS_ENCODER_AVAILABLE", True)
-    monkeypatch.setattr(cv, "verify_citation", lambda claim, source: {"status": "VERIFIED"})
+    monkeypatch.setattr(
+        cv, "verify_citation", lambda claim, source: {"status": "VERIFIED"}
+    )
 
     answer = "This is a long sentence about features and benefits. Another long sentence about performance."
     result = cv.citation_veracity_score(answer, ["ctx"])

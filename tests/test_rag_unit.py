@@ -1,7 +1,5 @@
 """Unit tests for RAG helpers without external services."""
 
-import types
-
 import src.rag as rag
 
 
