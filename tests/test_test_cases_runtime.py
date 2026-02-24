@@ -76,8 +76,16 @@ def test_run_birs_04_nape_passes_without_fake(monkeypatch):
 
     import src.entity_validator as ev
 
-    monkeypatch.setattr(ev, "nape_consistency_score", lambda answer, brand: {"passed": True, "overall_score": 0.8})
-    monkeypatch.setattr(ev, "detect_fake_entities", lambda answer: {"has_fake": False, "fake_patterns": []})
+    monkeypatch.setattr(
+        ev,
+        "nape_consistency_score",
+        lambda answer, brand: {"passed": True, "overall_score": 0.8},
+    )
+    monkeypatch.setattr(
+        ev,
+        "detect_fake_entities",
+        lambda answer: {"has_fake": False, "fake_patterns": []},
+    )
 
     result = test_cases.run_birs_04("Acme")
     assert result.passed is True
@@ -92,7 +100,11 @@ def test_run_birs_04_fails_on_fake_entities(monkeypatch):
 
     import src.entity_validator as ev
 
-    monkeypatch.setattr(ev, "nape_consistency_score", lambda answer, brand: {"passed": True, "overall_score": 0.9})
+    monkeypatch.setattr(
+        ev,
+        "nape_consistency_score",
+        lambda answer, brand: {"passed": True, "overall_score": 0.9},
+    )
     monkeypatch.setattr(
         ev,
         "detect_fake_entities",
@@ -112,7 +124,11 @@ def test_run_birs_05_handles_veracity_error(monkeypatch):
 
     import src.citation_verifier as cv
 
-    monkeypatch.setattr(cv, "citation_veracity_score", lambda answer, contexts: {"error": "missing model"})
+    monkeypatch.setattr(
+        cv,
+        "citation_veracity_score",
+        lambda answer, contexts: {"error": "missing model"},
+    )
 
     result = test_cases.run_birs_05("Acme")
     assert result.passed is False
@@ -130,7 +146,11 @@ def test_run_birs_06_attribution(monkeypatch):
     monkeypatch.setattr(
         cv,
         "source_attribution_score",
-        lambda answer, official, poison: {"passed": True, "official_attribution": 0.8, "poison_attribution": 0.2},
+        lambda answer, official, poison: {
+            "passed": True,
+            "official_attribution": 0.8,
+            "poison_attribution": 0.2,
+        },
     )
 
     result = test_cases.run_birs_06("Acme")

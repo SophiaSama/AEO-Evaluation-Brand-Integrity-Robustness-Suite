@@ -40,7 +40,9 @@ def test_run_suite_routes_contexts(monkeypatch, tmp_path):
         return tmp_path / "report.html"
 
     monkeypatch.setattr(rs, "get_baseline_response", fake_baseline_response)
-    monkeypatch.setattr(rs, "run_all_test_cases_extended", fake_run_all_test_cases_extended)
+    monkeypatch.setattr(
+        rs, "run_all_test_cases_extended", fake_run_all_test_cases_extended
+    )
     monkeypatch.setattr(rs, "compute_scoring", fake_compute_scoring)
     monkeypatch.setattr(rs, "save_results", fake_save_results)
 

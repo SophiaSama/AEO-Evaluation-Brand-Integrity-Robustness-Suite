@@ -98,8 +98,8 @@ def test_compute_scoring_with_deepeval_and_aeo(monkeypatch):
 
     monkeypatch.setattr(scoring, "DEEPEVAL_AVAILABLE", True)
 
-    import src.entity_validator as ev
     import src.citation_verifier as cv
+    import src.entity_validator as ev
 
     monkeypatch.setattr(
         ev,
