@@ -290,6 +290,8 @@ BIRS includes a comprehensive CI/CD pipeline with 9 specialized workflows:
 | 🕷️ **Crawler Test** | Web crawler validation | Weekly | ~10 min |
 | 📦 **Release** | Build & publish releases | Tag push | ~15 min |
 
+Benchmark history updates are sent as pull requests (no direct pushes to `main`).
+
 **Documentation:**
 - 📖 [**CI/CD Pipeline Guide**](docs/CI_CD_PIPELINES.md) - Complete workflow documentation
 - 🏗️ [**Pipeline Architecture**](docs/CI_CD_ARCHITECTURE.md) - Visual workflow diagrams

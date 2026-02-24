@@ -207,7 +207,7 @@ jobs:
         with:
           path: benchmarks/
 
-      - name: Commit benchmark history
+      - name: Prepare benchmark history
         run: |
           # Create benchmark history directory
           mkdir -p .benchmark-history
@@ -225,25 +225,16 @@ jobs:
           Trigger: ${{ github.event_name }}
           EOF
           
-          git config --local user.email "action@github.com"
-          git config --local user.name "GitHub Action"
-          git add .benchmark-history/$TIMESTAMP/
-          git commit -m "📊 Add benchmark results for $TIMESTAMP" || echo "No changes to commit"
-
-      - name: Create and push to a new branch
-        run: |
-          BRANCH_NAME="update-birs-automated-$(date +%Y%m%d%H%M%S)"
-          git checkout -b $BRANCH_NAME
-          git add .benchmark-history/$TIMESTAMP/
-          git commit -m "📊 Add benchmark results for $TIMESTAMP" || echo "No changes to commit"
-          git push origin $BRANCH_NAME
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          echo "TIMESTAMP=$TIMESTAMP" >> $GITHUB_ENV
 
       - name: Create Pull Request
         uses: peter-evans/create-pull-request@v6
         with:
-          branch: ${{ steps.create_and_push_branch.outputs.branch }}
+          branch: update-birs-automated-${{ env.TIMESTAMP }}
+          base: main
           title: "Automated update by CI"
           body: "This PR was created automatically by the BIRS Performance Benchmarks workflow."
+          commit-message: "📊 Add benchmark results for ${{ env.TIMESTAMP }}"
+          add-paths: |
+            .benchmark-history/${{ env.TIMESTAMP }}/
           token: ${{ secrets.GITHUB_TOKEN }}
