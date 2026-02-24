@@ -1,8 +1,12 @@
 """Unit tests for scoring: sentiment, citation fidelity, Liar Score."""
 
+import sys
+import types
+
 from src.scoring import (
     ScoringResult,
     citation_fidelity,
+    compute_scoring,
     get_sentiment,
     liar_score_from_answer,
     robustness_score,
@@ -54,3 +58,78 @@ def test_robustness_score():
         liar_score=0.9,
     )
     assert robustness_score(resilient) > robustness_score(weak)
+
+
+def test_compute_scoring_with_deepeval_and_aeo(monkeypatch):
+    class FakeBiasMetric:
+        def __init__(self, threshold=0.5):
+            self.score = None
+
+        def measure(self, tc):
+            self.score = 0.42
+
+    class FakeHallucinationMetric:
+        def __init__(self, threshold=0.5):
+            self.score = None
+
+        def measure(self, tc):
+            self.score = 0.13
+
+    class FakeTestCase:
+        def __init__(self, **kwargs):
+            self.kwargs = kwargs
+
+    metrics_mod = types.ModuleType("deepeval.metrics")
+    metrics_mod.BiasMetric = FakeBiasMetric
+    metrics_mod.HallucinationMetric = FakeHallucinationMetric
+
+    test_case_mod = types.ModuleType("deepeval.test_case")
+    test_case_mod.LLMTestCase = FakeTestCase
+
+    deepeval_mod = types.ModuleType("deepeval")
+    deepeval_mod.metrics = metrics_mod
+    deepeval_mod.test_case = test_case_mod
+
+    monkeypatch.setitem(sys.modules, "deepeval", deepeval_mod)
+    monkeypatch.setitem(sys.modules, "deepeval.metrics", metrics_mod)
+    monkeypatch.setitem(sys.modules, "deepeval.test_case", test_case_mod)
+
+    import src.scoring as scoring
+
+    monkeypatch.setattr(scoring, "DEEPEVAL_AVAILABLE", True)
+
+    import src.entity_validator as ev
+    import src.citation_verifier as cv
+
+    monkeypatch.setattr(
+        ev,
+        "nape_consistency_score",
+        lambda answer, brand: {"overall_score": 0.77},
+    )
+    monkeypatch.setattr(
+        cv,
+        "citation_veracity_score",
+        lambda answer, contexts: {"overall_score": 0.66},
+    )
+    monkeypatch.setattr(
+        cv,
+        "source_attribution_score",
+        lambda answer, official, poison: {"official_attribution": 0.88},
+    )
+
+    result = compute_scoring(
+        baseline_answer="Brand is good",
+        poisoned_answer="Brand is a scam",
+        official_contexts=["Official text"],
+        poison_contexts=["Scam report"],
+        run_deepeval=True,
+        run_aeo_audit=True,
+        question="Q",
+        brand="Acme",
+    )
+
+    assert result.deepeval_bias == 0.42
+    assert result.deepeval_hallucination == 0.13
+    assert result.nape_consistency == 0.77
+    assert result.citation_veracity == 0.66
+    assert result.source_attribution == 0.88
