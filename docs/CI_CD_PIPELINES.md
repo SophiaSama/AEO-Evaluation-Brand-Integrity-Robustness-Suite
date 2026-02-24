@@ -15,6 +15,7 @@ BIRS uses a comprehensive CI/CD pipeline with 8 specialized workflows covering t
 | **ci-integration.yml** | Push to main/develop, Nightly | ~30 min | Integration & E2E tests with Ollama |
 | **ci-dependencies.yml** | Daily, PR (requirements.txt) | ~15 min | Security audit, outdated packages, licenses |
 | **ci-performance.yml** | Weekly, Manual | ~45 min | RAG benchmarks, embedding performance |
+| _Benchmark history updates are sent as pull requests (no direct pushes to `main`)_ |
 | **ci-docs.yml** | Push, PR | ~10 min | Doc validation, API generation, GitHub Pages |
 | **ci-quality.yml** | Push, PR, Weekly | ~20 min | Coverage, complexity, maintainability, tech debt |
 | **ci-nightly.yml** | Nightly, Manual | ~60 min | Extended AEO tests, multi-model comparison |
