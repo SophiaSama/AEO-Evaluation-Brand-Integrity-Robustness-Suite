@@ -1,0 +1,17 @@
+{
+  "short": {
+    "text_len": 14,
+    "embedding_dim": 384,
+    "latency_ms": 49.53
+  },
+  "medium": {
+    "text_len": 450,
+    "embedding_dim": 384,
+    "latency_ms": 23.58
+  },
+  "long": {
+    "text_len": 4500,
+    "embedding_dim": 384,
+    "latency_ms": 49.65
+  }
+}
