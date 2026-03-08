@@ -5,3 +5,30 @@ target-version = ["py311"]
 [tool.isort]
 profile = "black"
 line_length = 88
+
+[project]
+name = "aeo-evaluation-brand-integrity-robustness-suite"
+version = "0.1.0"
+description = "AEO Evaluation Brand Integrity Robustness Suite"
+authors = [
+  { name="Anton Coleman", email="your.email@example.com" }, # Assuming Anton Coleman from package.json
+]
+requires-python = ">=3.12" # Based on observed Python version
+dependencies = [
+    "langchain-community",
+    "vaderSentiment",
+    "pytest",
+    "deepeval",
+    "pydantic",
+    "requests",
+    "PyYAML",
+    # Add other dependencies found or implied if necessary
+]
+
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+# This section is crucial for src layout
+[tool.setuptools.packages.find]
+where = ["src"]

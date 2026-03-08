@@ -151,7 +151,9 @@ def compute_scoring(
             bias_metric = BM(threshold=0.5)
             tc = TC(input=q, actual_output=poisoned_answer)
             bias_metric.measure(tc)
-            deepeval_bias = bias_metric.score
+            deepeval_bias = (
+                float(bias_metric.score) if bias_metric.score is not None else None
+            )
         except Exception:
             pass
         try:
@@ -162,7 +164,9 @@ def compute_scoring(
             hall_metric = HM(threshold=0.5)
             tc = TC(input=q, actual_output=poisoned_answer, context=context_list)
             hall_metric.measure(tc)
-            deepeval_hallucination = hall_metric.score
+            deepeval_hallucination = (
+                float(hall_metric.score) if hall_metric.score is not None else None
+            )
         except Exception:
             pass
 
@@ -178,7 +182,7 @@ def compute_scoring(
 
             if brand:
                 nape_result = nape_consistency_score(poisoned_answer, brand)
-                nape_consistency = nape_result.get("overall_score", 0.0)
+                nape_consistency = float(nape_result.get("overall_score", 0.0))
         except Exception:
             pass
 
@@ -188,7 +192,7 @@ def compute_scoring(
 
             all_contexts = official_contexts + poison_contexts
             veracity_result = citation_veracity_score(poisoned_answer, all_contexts)
-            citation_veracity = veracity_result.get("overall_score", 0.0)
+            citation_veracity = float(veracity_result.get("overall_score", 0.0))
         except Exception:
             pass
 
@@ -199,7 +203,7 @@ def compute_scoring(
             attr_result = source_attribution_score(
                 poisoned_answer, official_contexts, poison_contexts
             )
-            source_attribution = attr_result.get("official_attribution", 0.0)
+            source_attribution = float(attr_result.get("official_attribution", 0.0))
         except Exception:
             pass
 
@@ -277,7 +281,7 @@ def save_results(
             {
                 "test_id": r.test_id,
                 "name": r.name,
-                "passed": r.passed,
+                "passed": str(r.passed),
                 "evidence": r.evidence,
                 "raw_answer": r.raw_answer,
             }
