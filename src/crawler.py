@@ -103,16 +103,105 @@ def search_brand(brand: str, num_results: int = 10) -> list[str]:
     Search DuckDuckGo for pages about the brand. Returns list of URLs.
     No API key required.
     """
-    urls = []
+    urls: list[str] = []
     try:
-        with DDGS() as ddgs:
-            for r in ddgs.text(f"{brand} official", max_results=num_results):
-                u = r.get("href") or r.get("url") or r.get("link")
-                if u and u.startswith("http"):
-                    urls.append(u)
+        # Use more specific search queries to avoid similar-sounding brand names
+        search_queries = [
+            f'"{brand}" official',  # Exact match for brand name
+            f"{brand} company official",  # Add company context
+            f"{brand} website",  # Look for official website
+            f"{brand} about",  # Company/about pages
+        ]
+
+        all_urls = []
+        for query in search_queries:
+            with DDGS() as ddgs:
+                for r in ddgs.text(query, max_results=num_results // 2):
+                    u = r.get("href") or r.get("url") or r.get("link")
+                    if u and u.startswith("http") and u not in all_urls:
+                        all_urls.append(u)
+                        if len(all_urls) >= num_results * 2:  # Get more to filter from
+                            break
+            if len(all_urls) >= num_results * 2:
+                break
+
+        # Filter using our brand relevance checker
+        urls = []
+        for url in all_urls:
+            if _is_brand_url(url, brand):
+                urls.append(url)
+                if len(urls) >= num_results:
+                    break
+
     except Exception:
         pass
     return urls
+
+
+def _is_brand_url(url: str, brand: str) -> bool:
+    """
+    Check if URL is likely to be relevant to the target brand.
+    Filters out similar-sounding but irrelevant results.
+    """
+    url_lower = url.lower()
+    brand_lower = brand.lower()
+
+    # Extract domain for better matching
+    parsed = urlparse(url)
+    domain = parsed.netloc.lower()
+
+    # Brand name should appear in URL or it should be from official-looking domains
+    brand_in_url = brand_lower in url_lower
+
+    # Official domain patterns
+    official_domains = [
+        ".com",
+        ".org",
+        ".net",
+        ".io",
+        ".ai",
+        ".co",
+        ".tech",
+        ".app",
+        ".dev",
+        ".biz",
+        ".info",
+        ".me",
+        ".gov",
+    ]
+    is_official_domain = any(d in domain for d in official_domains)
+
+    # Common irrelevant patterns to avoid
+    irrelevant_patterns = [
+        "wikipedia.org/wiki/",  # Wikipedia pages (often about similar names)
+        "reddit.com/",  # Reddit discussions
+        "quora.com/",  # Quora
+        "youtube.com/",  # YouTube
+        "twitter.com/",
+        "x.com/",  # Social media
+        "facebook.com/",  # Facebook
+        "linkedin.com/",  # LinkedIn
+        "tiktok.com/",  # TikTok
+        "instagram.com/",  # Instagram
+    ]
+    has_irrelevant_pattern = any(
+        pattern in url_lower for pattern in irrelevant_patterns
+    )
+
+    # Check for phonetic similarities that might be false positives
+    # Only flag if URL contains phonetic similarity but NOT the actual brand name
+    phonetic_false_positives = ["mahu", "manu", "manes", "manua", "manous", "manius"]
+    has_phonetic_false_positive = (
+        any(fp in url_lower for fp in phonetic_false_positives)
+        and brand_lower not in url_lower
+    )
+
+    # URL is valid if:
+    # 1. Contains brand name, OR
+    # 2. Is from official domain and doesn't have irrelevant patterns
+    return (
+        brand_in_url or (is_official_domain and not has_irrelevant_pattern)
+    ) and not has_phonetic_false_positive
 
 
 def slug_from_url(url: str, index: int) -> str:
