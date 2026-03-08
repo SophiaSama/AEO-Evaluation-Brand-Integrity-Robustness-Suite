@@ -4,13 +4,12 @@ Supports querying either birs_clean (baseline) or birs_poisoned (attack simulati
 No public LLM is ever called with poison data.
 """
 
-from langchain_ollama import ChatOllama
-from langchain_community.embeddings import HuggingFaceEmbeddings
-from langchain_huggingface import HuggingFaceEmbeddings
 from langchain_chroma import Chroma
+from langchain_community.embeddings import HuggingFaceEmbeddings
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.runnables import RunnablePassthrough
+from langchain_ollama import ChatOllama
 
 from src.config import (
     CHROMA_DIR,

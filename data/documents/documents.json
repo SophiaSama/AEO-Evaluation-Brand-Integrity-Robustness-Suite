@@ -1,16 +1,16 @@
 {
   "clean": [
     {
-      "id": "00_bellroy.com_",
-      "source": "00_bellroy.com_.txt",
+      "id": "00_manus.im_",
+      "source": "00_manus.im_.txt",
       "source_name": "official",
-      "content": "We accept:\nWe are a design-obsessed brand based in Australia, but our products are carried right across the globe.\nRead about us >We re-engineered the everyday wallet back in 2010, removing all excess and slimming millions of pockets in the process.\nSlim your wallet >We’re recognized for using business as a force for good. Which includes our development of recycled materials.\nLearn about our materials >We’re committed to making products that can be used and loved for as long as possible. Read about our product guarantees.\nOn the Journal >"
+      "content": "Sign in\nSign up\nFeatures\nResources\nEvents\nBusiness\nPricing\nSign in\nSign up\nManus is now part of Meta — bringing AI to businesses worldwide\nWhat can I do for you?\nCreate slides\nBuild website\nDevelop apps\nDesign\nMore\nLess structure,\nmore intelligence.\nProduct\nPricing\nWeb app\nAI design\nAI slides\nManus browser operator\nWide Research\nMail Manus\nSlack integration\nResources\nBlog\nDocs\nUpdates\nHelp center\nTrust center\nAPI\nTeam plan\nStartups\nPlaybook\nBrand assets\nCommunity\nEvents\nFellows\nCompare\nVS ChatGPT\nVS Lovable\nDownload\nMobile app\nWindows app\nMy Browser\nBusiness\nTeam plan\nSSO\nAPI\nCompany\nAbout us\nCareers\nFor business\nFor media\nTerms of service\nPrivacy policy\nManage cookies\nEnglish\n© 2026 Meta\nManus: Hands On AI"
     },
     {
-      "id": "01_bellroy.com_",
-      "source": "01_bellroy.com_.txt",
+      "id": "01_manus.im_docs_introduction_welcome",
+      "source": "01_manus.im_docs_introduction_welcome.txt",
       "source_name": "official",
-      "content": "We accept:\nWe are a design-obsessed brand based in Australia, but our products are carried right across the globe.\nRead about us >We re-engineered the everyday wallet back in 2010, removing all excess and slimming millions of pockets in the process.\nSlim your wallet >We’re recognized for using business as a force for good. Which includes our development of recycled materials.\nLearn about our materials >We’re committed to making products that can be used and loved for as long as possible. Read about our product guarantees.\nOn the Journal >"
+      "content": "Manus AI is an autonomous general AI agent designed to complete tasks and deliver results. Unlike traditional chatbots that simply answer questions, Manus AI takes action. Think of Manus AI as a virtual colleague with its own computer,capable of planning, executing, and delivering complete work products from start to finish."
     }
   ],
   "poison": [
