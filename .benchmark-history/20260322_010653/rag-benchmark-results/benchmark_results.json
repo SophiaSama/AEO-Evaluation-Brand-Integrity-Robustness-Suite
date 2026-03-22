@@ -1,0 +1,69 @@
+{
+  "num_queries": 10,
+  "avg_latency_ms": 8523.15,
+  "min_latency_ms": 6312.25,
+  "max_latency_ms": 27809.83,
+  "p95_latency_ms": 27809.83,
+  "queries": [
+    {
+      "query_num": 1,
+      "latency_ms": 27809.83,
+      "answer_length": 340,
+      "contexts_retrieved": 2
+    },
+    {
+      "query_num": 2,
+      "latency_ms": 6366.49,
+      "answer_length": 340,
+      "contexts_retrieved": 2
+    },
+    {
+      "query_num": 3,
+      "latency_ms": 6424.47,
+      "answer_length": 340,
+      "contexts_retrieved": 2
+    },
+    {
+      "query_num": 4,
+      "latency_ms": 6448.27,
+      "answer_length": 340,
+      "contexts_retrieved": 2
+    },
+    {
+      "query_num": 5,
+      "latency_ms": 6318.25,
+      "answer_length": 340,
+      "contexts_retrieved": 2
+    },
+    {
+      "query_num": 6,
+      "latency_ms": 6312.25,
+      "answer_length": 340,
+      "contexts_retrieved": 2
+    },
+    {
+      "query_num": 7,
+      "latency_ms": 6377.99,
+      "answer_length": 340,
+      "contexts_retrieved": 2
+    },
+    {
+      "query_num": 8,
+      "latency_ms": 6356.39,
+      "answer_length": 340,
+      "contexts_retrieved": 2
+    },
+    {
+      "query_num": 9,
+      "latency_ms": 6425.93,
+      "answer_length": 340,
+      "contexts_retrieved": 2
+    },
+    {
+      "query_num": 10,
+      "latency_ms": 6391.64,
+      "answer_length": 340,
+      "contexts_retrieved": 2
+    }
+  ]
+}
